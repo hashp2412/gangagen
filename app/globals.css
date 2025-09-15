@@ -1,26 +1,256 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Open+Sans:wght@300;400;600;700&display=swap');
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Arca Majora 3';
+  src: url('/ArcaMajora3-Heavy.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+.arca-bold{
+  font-family:'Arca Majora 3', sans-serif;
+  font-weight: 900;
+}
+
+@font-face {
+  font-family: 'Arca Majora 3';
+  src: url('/ArcaMajora3-Bold.woff') format('woff');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+.arca{
+  font-family:'Arca Majora 3', sans-serif;
+  font-weight: bold;
+}
+* {
+  box-sizing: border-box;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --green-50: #f0fdf4;
+  --green-100: #dcfce7;
+  --green-200: #bbf7d0;
+  --green-300: #86efac;
+  --green-400: #4ade80;
+  --green-500: #22c55e;
+  --green-600: #16a34a;
+  --green-700: #15803d;
+  --green-800: #166534;
+  --green-900: #14532d;
+  --primary-green: #309201;
+  --dark-green: #2a7d01;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: linear-gradient(180deg, #0a0f0a 0%, #1a2b1a 50%, #0f1a0f 100%);
+  color: #e8f5e8;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+  padding-top: 80px;
+  overflow-x: hidden;
+}
+
+.gradient-text {
+  background: linear-gradient(to right, #14b8a6, #06b6d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.healthcare-gradient {
+  background: linear-gradient(135deg, #e6fffa 0%, #ccfbf1 50%, #cffafe 100%);
+}
+
+.card-shadow {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+}
+
+.card-shadow-hover {
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Roboto font class */
+.roboto {
+  font-family: 'Roboto', sans-serif;
+}
+
+/* Custom scrollbar for dashboard */
+.overflow-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-auto::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.overflow-auto::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.overflow-auto::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Futuristic Linear Theme Utilities */
+.btn-futuristic {
+  background: linear-gradient(145deg, #00ff88, #00cc6a);
+  color: #0a0f0a;
+  border: 1px solid #00ff88;
+  border-radius: 0;
+  padding: 12px 24px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-futuristic:hover {
+  background: linear-gradient(145deg, #00cc6a, #00aa56);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+  transform: translateY(-2px);
+}
+
+.btn-futuristic:active {
+  transform: translateY(0);
+}
+
+.card-futuristic {
+  background: rgba(26, 43, 26, 0.8);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: 0;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.input-futuristic {
+  background: rgba(10, 15, 10, 0.6);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 0;
+  color: #e8f5e8;
+  padding: 12px 16px;
+  font-weight: 400;
+  transition: all 0.3s ease;
+}
+
+.input-futuristic:focus {
+  outline: none;
+  border-color: #00ff88;
+  box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2);
+  background: rgba(10, 15, 10, 0.8);
+}
+
+.input-futuristic::placeholder {
+  color: rgba(232, 245, 232, 0.5);
+}
+
+.sidebar-futuristic {
+  background: rgba(10, 15, 10, 0.9);
+  border-right: 1px solid rgba(0, 255, 136, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.menu-item-futuristic {
+  border: 1px solid transparent;
+  border-radius: 0;
+  margin: 2px 0;
+  transition: all 0.3s ease;
+  background: transparent;
+  position: relative;
+}
+
+.menu-item-futuristic:hover {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: rgba(0, 255, 136, 0.3);
+}
+
+.menu-item-futuristic.active {
+  background: rgba(0, 255, 136, 0.2);
+  border-color: #00ff88;
+  color: #00ff88;
+}
+
+.menu-item-futuristic.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #00ff88;
+}
+
+.table-futuristic {
+  background: rgba(10, 15, 10, 0.6);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  border-radius: 0;
+  backdrop-filter: blur(5px);
+}
+
+.table-futuristic thead {
+  background: rgba(0, 255, 136, 0.1);
+  border-bottom: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.table-futuristic tbody tr {
+  border-bottom: 1px solid rgba(0, 255, 136, 0.1);
+  transition: all 0.3s ease;
+}
+
+.table-futuristic tbody tr:hover {
+  background: rgba(0, 255, 136, 0.05);
+}
+
+.table-futuristic tbody tr.selected {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: #00ff88;
+}
+
+/* Futuristic animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(0, 255, 136, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Subtle scan line effect */
+.scan-lines::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    transparent 98%,
+    rgba(0, 255, 136, 0.03) 99%,
+    transparent 100%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
 }
