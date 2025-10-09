@@ -71,13 +71,13 @@ export default function AccessCodeModal({ isOpen, onClose, onSuccess }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100]">
-      <div className="card-futuristic max-w-md w-[90%] mx-4 p-10">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100]">
+      <div className="card-linear max-w-md w-[90%] mx-4 p-10 shadow-linear-hover">
         <div className="text-center mb-8">
-          <h2 className="text-xl font-light text-green-200 mb-3 roboto tracking-wide uppercase">
+          <h2 className="text-xl font-semibold text-linear-text-primary mb-3 roboto tracking-wide uppercase">
             Authentication Required
           </h2>
-          <p className="text-green-400 font-light text-sm">
+          <p className="text-linear-text-secondary font-normal text-sm">
             Enter authorization code to proceed
           </p>
         </div>
@@ -89,14 +89,14 @@ export default function AccessCodeModal({ isOpen, onClose, onSuccess }) {
               value={accessCode}
               onChange={(e) => setAccessCode(e.target.value)}
               placeholder="••••••"
-              className="input-futuristic w-full text-center text-lg tracking-widest font-mono"
+              className="input-linear w-full text-center text-lg tracking-widest font-mono"
               disabled={isValidating}
               autoFocus
             />
           </div>
 
           {error && (
-            <div className="mb-6 text-red-400 text-sm text-center bg-red-900/20 py-3 px-4 border border-red-500/30 font-light">
+            <div className="mb-6 text-red-600 text-sm text-center bg-red-50 py-3 px-4 border border-red-200 rounded-lg font-normal">
               {error}
             </div>
           )}
@@ -106,14 +106,14 @@ export default function AccessCodeModal({ isOpen, onClose, onSuccess }) {
               type="button"
               onClick={handleClose}
               disabled={isValidating}
-              className="flex-1 px-4 py-3 border border-gray-500/30 text-gray-400 bg-transparent hover:bg-gray-500/10 disabled:opacity-50 font-light uppercase tracking-wide text-sm transition-all duration-300"
+              className="flex-1 px-4 py-3 border border-linear-border text-linear-text-secondary bg-white hover:bg-linear-white-soft disabled:opacity-50 font-normal uppercase tracking-wide text-sm transition-all duration-300 rounded-lg"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isValidating || !accessCode.trim()}
-              className="btn-futuristic flex-1 px-4 py-3 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="btn-linear flex-1 px-4 py-3 disabled:opacity-50 disabled:cursor-not-allowed text-sm uppercase tracking-wide"
             >
               {isValidating ? 'Validating...' : 'Authenticate'}
             </button>

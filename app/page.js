@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import AccessCodeModal from '../components/AccessCodeModal';
 import Dashboard from '../components/Dashboard';
 
@@ -45,57 +46,92 @@ export default function Home() {
 
   // Show login screen if user doesn't have access
   return (
-    <div className="w-full min-h-screen relative">
-      {/* Background Grid Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute inset-0" style={{
-          backgroundImage: 'linear-gradient(rgba(0, 255, 136, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 136, 0.1) 1px, transparent 1px)',
-          backgroundSize: '50px 50px'
-        }}></div>
-      </div>
-
+    <div className="w-full min-h-[200vh] relative overflow-hidden">
       {/* Hero Section */}
-      <div className="w-full h-screen flex justify-center items-center p-4 relative z-10">
-        <div className="card-futuristic w-full max-w-2xl p-16 scan-lines relative">
+      <div className="w-full min-h-screen flex justify-center items-center p-4 relative z-10 pt-32">
+        <motion.div 
+          className="card-linear w-[50%] py-8 relative"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+        >
           <div className="text-center">
             {/* Main Title */}
-            <div className="mb-12">
-              <h1 className="arca text-5xl mb-4 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-green-200 font-bold leading-tight">
+            <motion.div 
+              className="mb-16"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <motion.h1 
+                className="font-display text-7xl mb-6 leading-tight tracking-tight"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                style={{
+                  background: 'linear-gradient(135deg, #22c55e 0%, #f97316 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
+              >
                 DISCOVERING
-              </h1>
-              <h2 className="arca text-3xl text-gray-300 font-light tracking-wider">
+              </motion.h1>
+              <motion.h2 
+                className="font-heading text-4xl text-linear-text-primary tracking-wide"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+              >
                 PROTEIN ANTIBACTERIALS
-              </h2>
-            </div>
+              </motion.h2>
+            </motion.div>
 
             {/* Subtitle */}
-            <div className="mb-12 p-6 border border-green-500/30 bg-green-900/20 backdrop-blur-sm">
-              <p className="roboto text-lg text-green-200 font-light tracking-wide">
+            <motion.div 
+              className="mb-16 p-8 glass-effect rounded-2xl backdrop-blur-xl"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.8 }}
+            >
+              <p className="font-space text-xl text-linear-text-primary font-semibold tracking-wide mb-2">
                 GangaGen AI EctoLysin
               </p>
-              <p className="roboto text-sm text-green-400 mt-1 font-mono">
+              <p className="font-manrope text-base text-linear-text-secondary opacity-80 font-medium">
                 — Powered by Orbuculum —
               </p>
-            </div>
+              <div className="mt-4 flex justify-center space-x-2">
+                {[0, 0.5, 1].map((delay, i) => (
+                  <motion.div
+                    key={i}
+                    className="w-2 h-2 rounded-full bg-green-500"
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{ duration: 2, repeat: Infinity, delay }}
+                  />
+                ))}
+              </div>
+            </motion.div>
 
             {/* CTA Button */}
-            <button 
+            <motion.button 
               onClick={handleAccessToolClick}
-              className="btn-futuristic px-16 py-4 text-sm roboto cursor-pointer pulse-glow"
+              className="btn-linear px-20 py-5 text-base font-ui cursor-pointer relative group overflow-hidden"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 1 }}
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.98 }}
             >
-              INITIALIZE ACCESS
-            </button>
-            
-            {/* Minimal Decorative Elements */}
-            <div className="mt-16 flex justify-center items-center space-x-8 opacity-60">
-              <div className="w-2 h-2 bg-green-400"></div>
-              <div className="w-8 h-px bg-gradient-to-r from-transparent via-green-400 to-transparent"></div>
-              <div className="w-2 h-2 bg-green-400"></div>
-              <div className="w-8 h-px bg-gradient-to-r from-transparent via-green-400 to-transparent"></div>
-              <div className="w-2 h-2 bg-green-400"></div>
-            </div>
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                initial={{ x: '-100%' }}
+                whileHover={{ x: '100%' }}
+                transition={{ duration: 0.6, ease: "easeInOut" }}
+              />
+              <span className="relative z-10">INITIALIZE ACCESS</span>
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Access Code Modal */}
