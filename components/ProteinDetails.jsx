@@ -199,7 +199,7 @@ const DomainScale = ({ protein }) => {
         </svg>
 
         {/* HTML Tooltip with full sequence */}
-        {hoveredDomain?.domain === range.domain && (
+        {hoveredDomain && hoveredDomain.domain === range.domain && (
           <div
             className="absolute z-50 bg-gray-900 text-white rounded-lg shadow-2xl pointer-events-none"
             style={{

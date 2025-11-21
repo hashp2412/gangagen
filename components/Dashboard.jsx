@@ -193,6 +193,7 @@ export default function Dashboard({ onLogout }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(50);
   const [totalPages, setTotalPages] = useState(0);
+  const [hasMore, setHasMore] = useState(false); // For pagination when count is unknown
   const [pageInput, setPageInput] = useState('');
 
   // Calculate domain bounds from data
@@ -325,7 +326,8 @@ export default function Dashboard({ onLogout }) {
       
       setData(result.data);
       setFilteredData(result.data);
-      setTotalPages(result.totalPages);
+      setTotalPages(result.totalPages || 0);
+      setHasMore(result.hasMore || false);
       setCurrentPage(result.currentPage);
 
       // Calculate and set domain bounds
@@ -392,17 +394,33 @@ export default function Dashboard({ onLogout }) {
 
   // Pagination handlers
   const handlePageChange = (page) => {
-    if (page >= 1 && page <= totalPages) {
-      fetchData(page);
+    // If totalPages is null (unknown count), allow navigation based on hasMore
+    if (totalPages === null || totalPages === 0) {
+      if (page >= 1 && (page > currentPage ? hasMore : true)) {
+        fetchData(page);
+      }
+    } else {
+      // Normal pagination with known totalPages
+      if (page >= 1 && page <= totalPages) {
+        fetchData(page);
+      }
     }
   };
 
   const handlePageInputSubmit = (e) => {
     e.preventDefault();
     const page = parseInt(pageInput);
-    if (page >= 1 && page <= totalPages) {
-      fetchData(page);
-      setPageInput('');
+    // If totalPages is null, allow any page >= 1
+    if (totalPages === null || totalPages === 0) {
+      if (page >= 1) {
+        fetchData(page);
+        setPageInput('');
+      }
+    } else {
+      if (page >= 1 && page <= totalPages) {
+        fetchData(page);
+        setPageInput('');
+      }
     }
   };
 
@@ -485,7 +503,7 @@ export default function Dashboard({ onLogout }) {
         return (
           <div className="space-y-6">
             {/* Search Filters */}
-            <div className="card-linear p-8 mb-8">
+            <div className="hover:border-2 hover:border-[#22c55e] rounded-[20px] border-[2px] border-[#e5e5e5] p-8 mb-8">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                 <div>
                   <label className="block text-xs font-ui text-linear-text-secondary mb-3 uppercase tracking-wider">
@@ -696,9 +714,13 @@ export default function Dashboard({ onLogout }) {
                     {/* Left - Entry count */}
                     <div className="flex items-center space-x-2 text-sm text-linear-text-secondary">
                       <span>
-                        Showing {((currentPage - 1) * itemsPerPage) + 1} to{' '}
-                        {Math.min(currentPage * itemsPerPage, filteredData.length)} of{' '}
-                        {filteredData.length} entries
+                        {totalPages === null ? (
+                          // Unknown total - show page number with "many results"
+                          `Page ${currentPage} - Many results${hasMore ? ' (more available)' : ''}`
+                        ) : (
+                          // Known total - show normal count
+                          `Showing ${((currentPage - 1) * itemsPerPage) + 1} to ${Math.min(currentPage * itemsPerPage, filteredData.length)} of ${filteredData.length} entries`
+                        )}
                       </span>
                     </div>
                     
@@ -716,56 +738,67 @@ export default function Dashboard({ onLogout }) {
                       
                       {/* Page numbers */}
                       <div className="flex space-x-1">
-                        {/* First page */}
-                        {currentPage > 3 && (
+                        {totalPages !== null && totalPages > 0 ? (
                           <>
-                            <button
-                              onClick={() => handlePageChange(1)}
-                              className="px-3 py-1 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
-                            >
-                              1
-                            </button>
-                            {currentPage > 4 && <span className="px-2 text-linear-text-secondary">...</span>}
+                            {/* First page */}
+                            {currentPage > 3 && (
+                              <>
+                                <button
+                                  onClick={() => handlePageChange(1)}
+                                  className="px-3 py-1 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
+                                >
+                                  1
+                                </button>
+                                {currentPage > 4 && <span className="px-2 text-linear-text-secondary">...</span>}
+                              </>
+                            )}
+
+                            {/* Current page range */}
+                            {[...Array(5)].map((_, i) => {
+                              const page = currentPage - 2 + i;
+                              if (page < 1 || page > totalPages) return null;
+                              return (
+                                <button
+                                  key={page}
+                                  onClick={() => handlePageChange(page)}
+                                  className={`px-4 py-2 text-sm rounded-xl transition-all duration-300 ${
+                                    page === currentPage
+                                      ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg transform scale-105'
+                                      : 'bg-green-100 text-green-800 hover:bg-green-200 hover:transform hover:scale-105'
+                                  }`}
+                                >
+                                  {page}
+                                </button>
+                              );
+                            })}
+
+                            {/* Last page */}
+                            {currentPage < totalPages - 2 && (
+                              <>
+                                {currentPage < totalPages - 3 && <span className="px-2 text-linear-text-secondary">...</span>}
+                                <button
+                                  onClick={() => handlePageChange(totalPages)}
+                                  className="px-3 py-1 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
+                                >
+                                  {totalPages}
+                                </button>
+                              </>
+                            )}
                           </>
-                        )}
-                        
-                        {/* Current page range */}
-                        {[...Array(5)].map((_, i) => {
-                          const page = currentPage - 2 + i;
-                          if (page < 1 || page > totalPages) return null;
-                          return (
-                            <button
-                              key={page}
-                              onClick={() => handlePageChange(page)}
-                              className={`px-4 py-2 text-sm rounded-xl transition-all duration-300 ${
-                                page === currentPage
-                                  ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg transform scale-105'
-                                  : 'bg-green-100 text-green-800 hover:bg-green-200 hover:transform hover:scale-105'
-                              }`}
-                            >
-                              {page}
-                            </button>
-                          );
-                        })}
-                        
-                        {/* Last page */}
-                        {currentPage < totalPages - 2 && (
-                          <>
-                            {currentPage < totalPages - 3 && <span className="px-2 text-linear-text-secondary">...</span>}
-                            <button
-                              onClick={() => handlePageChange(totalPages)}
-                              className="px-3 py-1 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
-                            >
-                              {totalPages}
-                            </button>
-                          </>
+                        ) : (
+                          /* Unknown total pages - just show current page */
+                          <button
+                            className="px-4 py-2 text-sm rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg transform scale-105"
+                          >
+                            {currentPage}
+                          </button>
                         )}
                       </div>
                       
                       {/* Next button */}
                       <button
                         onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
+                        disabled={totalPages ? currentPage === totalPages : !hasMore}
                         className="px-4 py-2 text-sm bg-green-100 text-green-800 rounded-xl hover:bg-green-200 hover:transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center gap-1"
                       >
                         Next
@@ -778,7 +811,7 @@ export default function Dashboard({ onLogout }) {
                         <input
                           type="number"
                           min="1"
-                          max={totalPages}
+                          max={totalPages || undefined}
                           value={pageInput}
                           onChange={(e) => setPageInput(e.target.value)}
                           placeholder="Page"
@@ -927,15 +960,7 @@ export default function Dashboard({ onLogout }) {
       <div className="flex-1 flex flex-col overflow-hidden">
 
         {/* Content */}
-        <main ref={mainContentRef} className="flex-1 overflow-auto p-8 relative">
-          <div className="floating-shapes">
-            <div className="floating-shape"></div>
-            <div className="floating-shape"></div>
-            <div className="floating-shape"></div>
-            <div className="floating-shape"></div>
-            <div className="floating-shape"></div>
-            <div className="floating-shape"></div>
-          </div>
+        <main ref={mainContentRef} className="flex-1 overflow-auto p-8 relative bg-white">
           {renderContent()}
         </main>
       </div>

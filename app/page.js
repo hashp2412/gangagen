@@ -149,10 +149,10 @@ export default function Home() {
               transition={{ duration: 0.8, delay: 0.3 }}
             >
               {/* Main Card */}
-              <div className="relative bg-white border-4 border-gray-900 rounded-3xl p-12 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+              <div className="relative bg-white border-2 border-gray-300 rounded-3xl p-12 shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
                 {/* Top Badge */}
                 <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
-                  <div className="bg-orange-500 text-white px-6 py-2 rounded-full font-mono text-sm font-bold border-4 border-gray-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                  <div className="bg-orange-500 text-white px-6 py-2 rounded-full font-mono text-sm font-bold border-2 border-orange-600 shadow-lg">
                     POWERED BY AI
                   </div>
                 </div>
@@ -185,7 +185,7 @@ export default function Home() {
                     ].map((item, index) => (
                       <motion.div
                         key={index}
-                        className="flex items-center gap-4 p-4 bg-gray-50 border-2 border-gray-900 rounded-xl"
+                        className="flex items-center gap-4 p-4 bg-green-50 border-2 border-green-200 rounded-xl hover:border-green-400 hover:shadow-md transition-all"
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.8 + index * 0.1 }}
@@ -213,20 +213,22 @@ export default function Home() {
 
               {/* Floating Stats Cards */}
               <motion.div
-                className="absolute -bottom-6 -left-6 bg-green-600 text-white p-6 rounded-2xl border-4 border-gray-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+                className="absolute -bottom-6 -left-6 bg-green-600 text-white p-6 rounded-2xl border-2 border-green-700 shadow-xl"
                 initial={{ opacity: 0, scale: 0 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 1.2 }}
+                whileHover={{ scale: 1.05 }}
               >
                 <div className="font-mono text-4xl font-black">1000+</div>
                 <div className="font-manrope text-sm font-semibold">Proteins Analyzed</div>
               </motion.div>
 
               <motion.div
-                className="absolute -top-6 -right-6 bg-orange-500 text-white p-6 rounded-2xl border-4 border-gray-900 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
+                className="absolute -top-6 -right-6 bg-orange-500 text-white p-6 rounded-2xl border-2 border-orange-600 shadow-xl"
                 initial={{ opacity: 0, scale: 0 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 1.4 }}
+                whileHover={{ scale: 1.05 }}
               >
                 <div className="font-mono text-4xl font-black">AI</div>
                 <div className="font-manrope text-sm font-semibold">Powered</div>
