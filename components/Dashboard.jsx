@@ -89,9 +89,9 @@ const RangeVisualization = ({ rangeData, domainBounds, proteinLength }) => {
         style={{ width: `${blockWidth}px` }}
       >
         {/* Main visualization bar */}
-        <div className="relative flex-1 h-10 bg-green-100 rounded-full overflow-hidden shadow-lg">
+        <div className="relative flex-1 h-10 bg-gradient-to-r from-gray-100 to-gray-200 overflow-hidden rounded-lg shadow-inner">
           <div
-            className="absolute h-full bg-gradient-to-r rounded-full from-green-500 to-green-600 transition-all duration-300 group-hover:from-green-600 group-hover:to-green-700"
+            className="absolute h-full bg-gradient-to-r from-indigo-400 to-indigo-600 transition-all duration-300 shadow-md"
             style={{
               left: `${startPercent}%`,
               width: `${widthPercent}%`
@@ -100,7 +100,7 @@ const RangeVisualization = ({ rangeData, domainBounds, proteinLength }) => {
         </div>
 
         {/* Domain label */}
-        <span className="text-xs text-linear-text-secondary font-jetbrains whitespace-nowrap">
+        <span className="text-xs text-indigo-600 font-jetbrains whitespace-nowrap font-bold bg-indigo-50 px-2 py-1 rounded-md">
           {range.domain}
         </span>
       </div>
@@ -108,21 +108,18 @@ const RangeVisualization = ({ rangeData, domainBounds, proteinLength }) => {
       {/* Hover tooltip */}
       {hoveredDomain?.domain === range.domain && (
         <div
-          className="absolute z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none"
+          className="absolute z-50 bg-white text-slate-900 text-xs px-4 py-3 pointer-events-none rounded-xl shadow-2xl border-2 border-indigo-200"
           style={{
             left: `${tooltipPosition.x}px`,
             top: `${tooltipPosition.y - 80}px`,
             transform: 'translateX(-50%)',
-            minWidth: '160px'
+            minWidth: '180px'
           }}
         >
-          <div className="font-semibold">{range.domain}</div>
-          <div className="text-gray-300">Domain Range: {rangeStart}-{rangeEnd}</div>
-          <div className="text-gray-300">Domain Length: {rangeEnd - rangeStart + 1} aa</div>
-          <div className="text-green-300 font-semibold">Protein Length: {proteinLength || 'N/A'} aa</div>
-          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full">
-            <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-          </div>
+          <div className="font-bold text-indigo-600 text-sm mb-2">{range.domain}</div>
+          <div className="text-gray-700 mb-1"><span className="font-semibold">Range:</span> {rangeStart}-{rangeEnd}</div>
+          <div className="text-gray-700 mb-1"><span className="font-semibold">Domain Length:</span> {rangeEnd - rangeStart + 1} aa</div>
+          <div className="text-gray-900 font-semibold border-t pt-2 mt-2"><span className="text-gray-600 font-normal">Protein:</span> {proteinLength || 'N/A'} aa</div>
         </div>
       )}
     </div>
@@ -503,7 +500,11 @@ export default function Dashboard({ onLogout }) {
         return (
           <div className="space-y-6">
             {/* Search Filters */}
-            <div className="hover:border-2 hover:border-[#22c55e] rounded-[20px] border-[2px] border-[#e5e5e5] p-8 mb-8">
+            <div className="bg-white p-8 mb-8 rounded-2xl shadow-lg backdrop-blur-xl bg-opacity-95 border border-gray-100">
+              <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-3">
+                <div className="w-1 h-8 bg-indigo-500 rounded-full"></div>
+                Search Proteins
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                 <div>
                   <label className="block text-xs font-ui text-linear-text-secondary mb-3 uppercase tracking-wider">
@@ -573,7 +574,7 @@ export default function Dashboard({ onLogout }) {
                       // Clear saved search state
                       sessionStorage.removeItem('dashboardSearchState');
                     }}
-                    className="px-4 py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-50"
+                    className="px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-300 font-semibold text-gray-700"
                     title="Clear filters"
                   >
                     Clear
@@ -589,11 +590,16 @@ export default function Dashboard({ onLogout }) {
                 <div className="flex items-center justify-center py-16">
                   <div className="flex flex-col items-center">
                     <div className="relative">
-                      <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-200 border-t-green-600"></div>
-                      <Sparkles className="absolute inset-0 m-auto w-6 h-6 text-green-600 animate-pulse" />
+                      <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 border-t-indigo-500 shadow-lg"></div>
+                      <Sparkles className="absolute inset-0 m-auto w-8 h-8 text-indigo-500 animate-pulse" />
                     </div>
-                    <p className="mt-4 text-linear-text-secondary font-medium">Searching database...</p>
-                    <p className="text-sm text-gray-500 mt-1">Processing {filteredData.length > 0 ? `${filteredData.length} results` : 'your query'}</p>
+                    <p className="mt-6 text-xl text-gray-900 font-semibold">Searching database...</p>
+                    <p className="text-sm text-gray-500 mt-2">Processing {filteredData.length > 0 ? `${filteredData.length} results` : 'your query'}</p>
+                    <div className="flex gap-2 mt-4">
+                      <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
+                      <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                      <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -617,10 +623,12 @@ export default function Dashboard({ onLogout }) {
               {!loading && !error && filteredData.length === 0 && (
                 <div className="text-center py-20">
                   <div className="flex flex-col items-center justify-center">
-                    <Search className="w-16 h-16 text-gray-300 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No data to display</h3>
-                    <p className="text-gray-500 mb-4">Use the search filters above to find proteins</p>
-                    <p className="text-sm text-gray-400">Search by name, organism, or domain</p>
+                    <div className="bg-gradient-to-br from-indigo-100 to-purple-100 p-6 rounded-full mb-6">
+                      <Search className="w-16 h-16 text-indigo-500" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">No data to display</h3>
+                    <p className="text-gray-600 mb-2 text-lg">Use the search filters above to find proteins</p>
+                    <p className="text-sm text-gray-500 bg-gray-100 px-4 py-2 rounded-full">Search by name, organism, or domain</p>
                   </div>
                 </div>
               )}
@@ -638,7 +646,7 @@ export default function Dashboard({ onLogout }) {
                             if (input) input.indeterminate = isSomeCurrentPageSelected() && !isAllCurrentPageSelected();
                           }}
                           onChange={(e) => handleSelectAll(e.target.checked)}
-                          className="h-4 w-4 text-green-600 accent-green-500 focus:ring-green-500 focus:ring-2 rounded"
+                          className="h-4 w-4 accent-green-500"
                         />
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-ui text-linear-text-secondary uppercase tracking-wider">
@@ -671,7 +679,7 @@ export default function Dashboard({ onLogout }) {
                             type="checkbox"
                             checked={selectedEntries.has(entry.id)}
                             onChange={(e) => handleEntrySelection(entry.id, e.target.checked)}
-                            className="h-4 w-4 text-green-600 accent-green-500 focus:ring-green-500 focus:ring-2 rounded"
+                            className="h-4 w-4 accent-green-500"
                           />
                         </td>
                         <td className="px-6 py-4 text-sm text-linear-text-primary font-mono">
@@ -730,7 +738,7 @@ export default function Dashboard({ onLogout }) {
                       <button
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className="px-4 py-2 text-sm bg-green-100 text-green-800 rounded-xl hover:bg-green-200 hover:transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center gap-1"
+                        className="px-4 py-2 text-sm bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center gap-1 rounded-lg border border-gray-200 font-medium"
                       >
                         <ChevronLeft className="w-4 h-4" />
                         Previous
@@ -745,7 +753,7 @@ export default function Dashboard({ onLogout }) {
                               <>
                                 <button
                                   onClick={() => handlePageChange(1)}
-                                  className="px-3 py-1 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
+                                  className="px-3 py-1 text-sm bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-300 rounded-lg border border-gray-200"
                                 >
                                   1
                                 </button>
@@ -761,10 +769,10 @@ export default function Dashboard({ onLogout }) {
                                 <button
                                   key={page}
                                   onClick={() => handlePageChange(page)}
-                                  className={`px-4 py-2 text-sm rounded-xl transition-all duration-300 ${
+                                  className={`px-4 py-2 text-sm transition-all duration-300 rounded-lg border ${
                                     page === currentPage
-                                      ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg transform scale-105'
-                                      : 'bg-green-100 text-green-800 hover:bg-green-200 hover:transform hover:scale-105'
+                                      ? 'bg-indigo-500 text-white border-indigo-500 shadow-lg'
+                                      : 'bg-white text-gray-700 border-gray-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200'
                                   }`}
                                 >
                                   {page}
@@ -778,7 +786,7 @@ export default function Dashboard({ onLogout }) {
                                 {currentPage < totalPages - 3 && <span className="px-2 text-linear-text-secondary">...</span>}
                                 <button
                                   onClick={() => handlePageChange(totalPages)}
-                                  className="px-3 py-1 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors"
+                                  className="px-3 py-1 text-sm bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-all duration-300 rounded-lg border border-gray-200"
                                 >
                                   {totalPages}
                                 </button>
@@ -788,7 +796,7 @@ export default function Dashboard({ onLogout }) {
                         ) : (
                           /* Unknown total pages - just show current page */
                           <button
-                            className="px-4 py-2 text-sm rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg transform scale-105"
+                            className="px-4 py-2 text-sm bg-indigo-500 text-white rounded-lg border border-indigo-500 shadow-lg"
                           >
                             {currentPage}
                           </button>
@@ -799,7 +807,7 @@ export default function Dashboard({ onLogout }) {
                       <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={totalPages ? currentPage === totalPages : !hasMore}
-                        className="px-4 py-2 text-sm bg-green-100 text-green-800 rounded-xl hover:bg-green-200 hover:transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center gap-1"
+                        className="px-4 py-2 text-sm bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center gap-1 rounded-lg border border-gray-200 font-medium"
                       >
                         Next
                         <ChevronRight className="w-4 h-4" />
@@ -807,7 +815,7 @@ export default function Dashboard({ onLogout }) {
                       
                       {/* Page jump */}
                       <form onSubmit={handlePageInputSubmit} className="flex items-center space-x-2 ml-4">
-                        <span className="text-sm text-linear-text-secondary">Go to:</span>
+                        <span className="text-sm text-gray-600 font-medium">Go to:</span>
                         <input
                           type="number"
                           min="1"
@@ -815,11 +823,11 @@ export default function Dashboard({ onLogout }) {
                           value={pageInput}
                           onChange={(e) => setPageInput(e.target.value)}
                           placeholder="Page"
-                          className="w-16 px-2 py-1 text-sm bg-green-50 rounded focus:outline-none focus:bg-green-100 focus:ring-2 focus:ring-green-500"
+                          className="w-16 px-3 py-2 text-sm bg-white border-2 border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 transition-all duration-300"
                         />
                         <button
                           type="submit"
-                          className="px-2 py-1 text-sm bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
+                          className="px-4 py-2 text-sm bg-indigo-500 text-white hover:bg-indigo-600 transition-all duration-300 rounded-lg font-medium shadow-md hover:shadow-lg"
                         >
                           Go
                         </button>
@@ -869,7 +877,7 @@ export default function Dashboard({ onLogout }) {
                             button.disabled = false;
                           }
                         }}
-                        className="px-4 py-2 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200 transition-colors flex items-center space-x-1"
+                        className="px-4 py-2 text-sm bg-white text-gray-700 border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all duration-300 flex items-center space-x-2 rounded-lg font-medium"
                       >
                         <Download className="w-4 h-4" />
                         <span>Export {selectedEntries.size > 0 ? `(${selectedEntries.size})` : 'All'}</span>
@@ -922,7 +930,7 @@ export default function Dashboard({ onLogout }) {
                             button.disabled = false;
                           }
                         }}
-                        className="btn-linear px-4 py-2 text-sm flex items-center space-x-1"
+                        className="btn-linear px-4 py-2 text-sm flex items-center space-x-2"
                       >
                         <Save className="w-4 h-4" />
                         <span>Save {selectedEntries.size > 0 ? `(${selectedEntries.size})` : 'All'}</span>
@@ -960,8 +968,10 @@ export default function Dashboard({ onLogout }) {
       <div className="flex-1 flex flex-col overflow-hidden">
 
         {/* Content */}
-        <main ref={mainContentRef} className="flex-1 overflow-auto p-8 relative bg-white">
-          {renderContent()}
+        <main ref={mainContentRef} className="flex-1 overflow-auto p-8 relative">
+          <div className="relative z-10">
+            {renderContent()}
+          </div>
         </main>
       </div>
     </div>

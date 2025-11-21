@@ -32,19 +32,9 @@ export default function Home() {
 
   // Show login screen if user doesn't have access
   return (
-    <div className="w-full min-h-screen relative overflow-hidden bg-white">
+    <div className="w-full min-h-screen relative overflow-hidden bg-gray-50">
       {/* Hero Section */}
       <div className="w-full min-h-screen flex justify-center items-center p-8 relative">
-        {/* Grid Background Pattern */}
-        <div className="absolute inset-0 pointer-events-none opacity-[0.03]">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `
-              linear-gradient(to right, #22c55e 1px, transparent 1px),
-              linear-gradient(to bottom, #22c55e 1px, transparent 1px)
-            `,
-            backgroundSize: '60px 60px'
-          }} />
-        </div>
 
         <div className="max-w-7xl w-full relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
@@ -57,13 +47,13 @@ export default function Home() {
             >
               {/* Label Tag */}
               <motion.div
-                className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 border-2 border-green-500 rounded-full"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
               >
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="font-mono text-sm font-semibold text-green-700 uppercase tracking-wider">
+                <div className="w-2 h-2 bg-green-500 animate-pulse" />
+                <span className="font-mono text-sm font-semibold text-green-600 uppercase tracking-wider">
                   Advanced AI Research
                 </span>
               </motion.div>
@@ -71,7 +61,7 @@ export default function Home() {
               {/* Main Heading */}
               <div className="space-y-4">
                 <motion.h1
-                  className="font-display text-7xl lg:text-8xl font-black text-gray-900 leading-[0.9] tracking-tighter"
+                  className="font-display text-7xl lg:text-8xl font-black text-slate-900 leading-[0.9] tracking-tighter"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
@@ -85,7 +75,7 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
                 >
-                  <h2 className="font-heading text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
+                  <h2 className="font-heading text-5xl lg:text-6xl font-bold text-black leading-tight">
                     PROTEIN
                   </h2>
                   <h2 className="font-heading text-5xl lg:text-6xl font-bold text-green-600 leading-tight">
@@ -94,7 +84,7 @@ export default function Home() {
 
                   {/* Accent Line */}
                   <motion.div
-                    className="absolute -left-4 top-0 w-1.5 bg-orange-500 rounded-full"
+                    className="absolute -left-4 top-0 w-1.5 bg-orange-500"
                     initial={{ height: 0 }}
                     animate={{ height: "100%" }}
                     transition={{ delay: 0.6, duration: 0.6 }}
@@ -104,7 +94,7 @@ export default function Home() {
 
               {/* Description */}
               <motion.p
-                className="text-xl text-gray-600 font-medium leading-relaxed max-w-lg"
+                className="text-xl text-slate-600 font-medium leading-relaxed max-w-lg"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.7 }}
@@ -115,7 +105,7 @@ export default function Home() {
               {/* CTA Button */}
               <motion.button
                 onClick={handleAccessToolClick}
-                className="group relative inline-flex items-center gap-4 px-10 py-5 bg-gray-900 text-white font-ui font-semibold text-lg rounded-2xl overflow-hidden cursor-pointer"
+                className="group relative inline-flex items-center gap-4 px-10 py-5 bg-green-500 text-white font-ui font-semibold text-lg overflow-hidden cursor-pointer hover:bg-green-600 transition-colors"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8 }}
@@ -130,14 +120,6 @@ export default function Home() {
                 >
                   →
                 </motion.span>
-
-                {/* Hover Effect */}
-                <motion.div
-                  className="absolute inset-0 bg-green-600"
-                  initial={{ x: "-100%" }}
-                  whileHover={{ x: 0 }}
-                  transition={{ duration: 0.3 }}
-                />
               </motion.button>
             </motion.div>
 
@@ -149,10 +131,10 @@ export default function Home() {
               transition={{ duration: 0.8, delay: 0.3 }}
             >
               {/* Main Card */}
-              <div className="relative bg-white border-2 border-gray-300 rounded-3xl p-12 shadow-[0_12px_40px_rgba(0,0,0,0.12)]">
+              <div className="relative bg-white p-12">
                 {/* Top Badge */}
                 <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
-                  <div className="bg-orange-500 text-white px-6 py-2 rounded-full font-mono text-sm font-bold border-2 border-orange-600 shadow-lg">
+                  <div className="bg-orange-500 text-white px-6 py-2 font-mono text-sm font-bold">
                     POWERED BY AI
                   </div>
                 </div>
@@ -161,7 +143,7 @@ export default function Home() {
                 <div className="space-y-8 mt-4">
                   {/* Brand Name */}
                   <div className="text-center space-y-2">
-                    <h3 className="font-space text-3xl font-black text-gray-900 tracking-tight">
+                    <h3 className="font-space text-3xl font-black text-black tracking-tight">
                       GangaGen AI
                     </h3>
                     <p className="font-heading text-5xl font-bold text-green-600">
@@ -171,9 +153,9 @@ export default function Home() {
 
                   {/* Divider */}
                   <div className="flex items-center gap-4">
-                    <div className="flex-1 h-1 bg-gray-900"></div>
+                    <div className="flex-1 h-px bg-gray-300"></div>
                     <div className="w-3 h-3 bg-orange-500 rotate-45"></div>
-                    <div className="flex-1 h-1 bg-gray-900"></div>
+                    <div className="flex-1 h-px bg-gray-300"></div>
                   </div>
 
                   {/* Features List */}
@@ -185,13 +167,13 @@ export default function Home() {
                     ].map((item, index) => (
                       <motion.div
                         key={index}
-                        className="flex items-center gap-4 p-4 bg-green-50 border-2 border-green-200 rounded-xl hover:border-green-400 hover:shadow-md transition-all"
+                        className="flex items-center gap-4 p-4 bg-green-50 hover:bg-green-100 transition-colors"
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.8 + index * 0.1 }}
                       >
                         <div className="text-3xl">{item.icon}</div>
-                        <span className="font-manrope font-semibold text-gray-900">
+                        <span className="font-manrope font-semibold text-black">
                           {item.text}
                         </span>
                       </motion.div>
@@ -199,21 +181,17 @@ export default function Home() {
                   </div>
 
                   {/* Footer Badge */}
-                  <div className="text-center pt-4 border-t-2 border-dashed border-gray-300">
-                    <p className="font-mono text-sm font-bold text-gray-600 tracking-wider">
+                  <div className="text-center pt-4 border-t border-gray-200">
+                    <p className="font-mono text-sm font-bold text-slate-500 tracking-wider">
                       POWERED BY ORBUCULUM
                     </p>
                   </div>
                 </div>
-
-                {/* Corner Accents */}
-                <div className="absolute top-4 right-4 w-8 h-8 border-t-4 border-r-4 border-green-600 rounded-tr-lg" />
-                <div className="absolute bottom-4 left-4 w-8 h-8 border-b-4 border-l-4 border-orange-500 rounded-bl-lg" />
               </div>
 
               {/* Floating Stats Cards */}
               <motion.div
-                className="absolute -bottom-6 -left-6 bg-green-600 text-white p-6 rounded-2xl border-2 border-green-700 shadow-xl"
+                className="absolute -bottom-6 -left-6 bg-green-500 text-white p-6"
                 initial={{ opacity: 0, scale: 0 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 1.2 }}
@@ -224,7 +202,7 @@ export default function Home() {
               </motion.div>
 
               <motion.div
-                className="absolute -top-6 -right-6 bg-orange-500 text-white p-6 rounded-2xl border-2 border-orange-600 shadow-xl"
+                className="absolute -top-6 -right-6 bg-orange-500 text-white p-6"
                 initial={{ opacity: 0, scale: 0 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 1.4 }}
