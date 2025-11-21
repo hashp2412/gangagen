@@ -21,22 +21,10 @@ import {
 // Range Visualization Component
 const RangeVisualization = ({ rangeData, domainBounds, proteinLength }) => {
   const [hoveredDomain, setHoveredDomain] = useState(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
-  // Trigger animation on mount
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 50);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleMouseMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setTooltipPosition({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
-  };
+  // SVG dimensions
+  const scaleWidth = 500;
+  const scaleHeight = 120;
 
   // Parse range data - expecting format like "PF03245(27...149)"
   const parseRange = (data) => {
@@ -60,75 +48,162 @@ const RangeVisualization = ({ rangeData, domainBounds, proteinLength }) => {
     return <span className="text-sm text-linear-text-secondary">{rangeData || 'N/A'}</span>;
   }
 
-  // Use protein length as the full scale (100% = protein length)
-  const scaleStart = 0;
-  const scaleEnd = proteinLength || 200; // Full protein length
-  const blockWidth = 200; // px - width of the visualization bar
+  // Use protein length as the full scale
+  const scaleEnd = proteinLength || 200;
 
-  // Calculate positions
-  const rangeStart = range.start;
-  const rangeEnd = range.end;
+  // Calculate position on the SVG scale
+  const calculatePosition = (value) => {
+    return (value / scaleEnd) * scaleWidth;
+  };
 
-  // Calculate percentage positions relative to FULL protein length
-  // Example: if protein is 201 aa and domain is 27-149
-  // startPercent = (27 / 201) * 100 = 13.4%
-  // endPercent = (149 / 201) * 100 = 74.1%
-  const startPercent = Math.max(0, Math.min(100, (rangeStart / scaleEnd) * 100));
-  const endPercent = Math.max(0, Math.min(100, (rangeEnd / scaleEnd) * 100));
-  const widthPercent = endPercent - startPercent;
+  // Generate tick marks
+  const majorTickInterval = Math.ceil(scaleEnd / 5);
+  const minorTickInterval = Math.ceil(majorTickInterval / 5);
+
+  const majorTicks = [];
+  for (let i = 0; i <= scaleEnd; i += majorTickInterval) {
+    majorTicks.push(i);
+  }
+
+  const minorTicks = [];
+  for (let i = 0; i <= scaleEnd; i += minorTickInterval) {
+    if (!majorTicks.includes(i)) {
+      minorTicks.push(i);
+    }
+  }
 
   return (
-    <div
-      className="relative inline-block group"
-      onMouseEnter={() => setHoveredDomain(range)}
-      onMouseLeave={() => setHoveredDomain(null)}
-      onMouseMove={handleMouseMove}
-    >
-      <div
-        className={`flex items-center gap-3 transition-all duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
-        style={{ width: `${blockWidth}px` }}
-      >
-        {/* Main visualization bar */}
-        <div className="relative flex-1 h-10 bg-green-100 rounded-full overflow-hidden shadow-lg">
-          <div
-            className="absolute h-full bg-gradient-to-r rounded-full from-green-500 to-green-600 transition-all duration-300 group-hover:from-green-600 group-hover:to-green-700"
-            style={{
-              left: `${startPercent}%`,
-              width: `${widthPercent}%`
-            }}
-          />
-        </div>
+    <div className="w-full max-w-[520px]">
+      <svg width={scaleWidth} height={scaleHeight}>
+        {/* Full protein background bar */}
+        <rect
+          x="0"
+          y="30"
+          width={scaleWidth}
+          height="20"
+          fill="#dcfce7"
+          stroke="#bbf7d0"
+          strokeWidth="2"
+          rx="10"
+        />
 
-        {/* Domain label */}
-        <span className="text-xs text-linear-text-secondary font-jetbrains whitespace-nowrap">
-          {range.domain}
-        </span>
-      </div>
-
-      {/* Hover tooltip */}
-      {hoveredDomain?.domain === range.domain && (
-        <div
-          className="absolute z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg pointer-events-none"
-          style={{
-            left: `${tooltipPosition.x}px`,
-            top: `${tooltipPosition.y - 80}px`,
-            transform: 'translateX(-50%)',
-            minWidth: '160px'
-          }}
+        {/* Domain highlight */}
+        <g
+          onMouseEnter={() => setHoveredDomain(range)}
+          onMouseLeave={() => setHoveredDomain(null)}
+          className="cursor-pointer"
         >
-          <div className="font-semibold">{range.domain}</div>
-          <div className="text-gray-300">Domain Range: {rangeStart}-{rangeEnd}</div>
-          <div className="text-gray-300">Domain Length: {rangeEnd - rangeStart + 1} aa</div>
-          <div className="text-green-300 font-semibold">Protein Length: {proteinLength || 'N/A'} aa</div>
-          <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full">
-            <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-          </div>
-        </div>
-      )}
+          <rect
+            x={calculatePosition(range.start)}
+            y="25"
+            width={calculatePosition(range.end - range.start)}
+            height="30"
+            fill="#f97316"
+            fillOpacity={hoveredDomain?.domain === range.domain ? 1 : 0.8}
+            stroke="#ea580c"
+            strokeWidth="2"
+            rx="5"
+            className="transition-all duration-200"
+          />
+
+          <text
+            x={calculatePosition(range.start + (range.end - range.start) / 2)}
+            y="42"
+            textAnchor="middle"
+            className="fill-white text-sm font-semibold"
+          >
+            {range.domain}
+          </text>
+
+          {/* Hover tooltip */}
+          {hoveredDomain?.domain === range.domain && (
+            <g className="animate-fade-in">
+              <rect
+                x={calculatePosition(range.start + (range.end - range.start) / 2) - 60}
+                y="0"
+                width="120"
+                height="20"
+                fill="#22c55e"
+                fillOpacity="0.9"
+                rx="3"
+              />
+              <text
+                x={calculatePosition(range.start + (range.end - range.start) / 2)}
+                y="14"
+                textAnchor="middle"
+                className="fill-white text-xs"
+              >
+                {range.start} - {range.end}
+              </text>
+            </g>
+          )}
+        </g>
+
+        {/* Major ticks with labels */}
+        {majorTicks.map((tick) => (
+          <g key={`major-${tick}`}>
+            <line
+              x1={calculatePosition(tick)}
+              y1="55"
+              x2={calculatePosition(tick)}
+              y2="68"
+              stroke="#6b7280"
+              strokeWidth="2"
+            />
+            <text
+              x={calculatePosition(tick)}
+              y="90"
+              textAnchor="middle"
+              className="fill-linear-text-secondary text-xs font-jetbrains"
+            >
+              {tick}
+            </text>
+          </g>
+        ))}
+
+        {/* Minor ticks without labels */}
+        {minorTicks.map((tick) => (
+          <g key={`minor-${tick}`}>
+            <line
+              x1={calculatePosition(tick)}
+              y1="55"
+              x2={calculatePosition(tick)}
+              y2="62"
+              stroke="#9ca3af"
+              strokeWidth="1"
+            />
+          </g>
+        ))}
+
+        <text
+          x={scaleWidth / 2}
+          y="110"
+          textAnchor="middle"
+          className="fill-linear-text-secondary text-sm font-ui"
+        >
+          Sequence Position
+        </text>
+      </svg>
+
+      <style jsx>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(5px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.2s ease-out;
+        }
+      `}</style>
     </div>
   );
 };
-
 
 
 // Database data will be fetched from Supabase
@@ -147,41 +222,13 @@ export default function Dashboard({ onLogout }) {
     domain: ''
   });
   
-  // Domain options for dropdown with names
+  // Domain options for dropdown
   const domainOptions = [
-    { code: "PF03245", name: "Bile acid:sodium symporter family" },
-    { code: "PF16754", name: "GTP-binding domain" },
-    { code: "PF11860", name: "Domain of unknown function" },
-    { code: "PF13702", name: "Ankyrin repeats" },
-    { code: "PF00959", name: "Nucleoside transporter" },
-    { code: "PF00182", name: "Chitinase class I" },
-    { code: "PF00704", name: "Glycosyl hydrolases family" },
-    { code: "PF01374", name: "SUR7/PalI family" },
-    { code: "PF05838", name: "SNARE domain" },
-    { code: "PF18013", name: "Transmembrane domain" },
-    { code: "PF04965", name: "Membrane protein" },
-    { code: "PF01183", name: "Glycosyltransferase" },
-    { code: "PF00722", name: "Glycosyl hydrolase family 16" },
-    { code: "PF05193", name: "Peptidase family" },
-    { code: "PF01551", name: "Peptidase family M23" },
-    { code: "PF00675", name: "Insulinase family" },
-    { code: "PF01435", name: "Peptidase family M41" },
-    { code: "PF01433", name: "Peptidase family M1" },
-    { code: "PF10502", name: "Signal peptide domain" },
-    { code: "PF00246", name: "Zinc carboxypeptidase" },
-    { code: "PF03572", name: "Peptidase family S49" },
-    { code: "PF00814", name: "Glycoprotease family" },
-    { code: "PF17900", name: "Bacterial domain" },
-    { code: "PF01510", name: "N-acetylmuramoyl-L-alanine amidase" },
-    { code: "PF01520", name: "N-acetylmuramoyl-L-alanine amidase" },
-    { code: "PF05257", name: "Endopeptidase" },
-    { code: "PF06347", name: "Protein of unknown function" },
-    { code: "PF08239", name: "Bacterial surface protein" },
-    { code: "PF08460", name: "WxL domain" },
-    { code: "PF01476", name: "LysM domain" },
-    { code: "PF14859", name: "Bacterial domain" },
-    { code: "PF01024", name: "Cysteine-rich domain" },
-    { code: "PF11429", name: "Domain of unknown function" }
+    "PF03245", "PF16754", "PF11860", "PF13702", "PF00959", "PF00182", "PF00704",
+    "PF01374", "PF05838", "PF18013", "PF04965", "PF01183", "PF00722", "PF05193", 
+    "PF01551", "PF00675", "PF01435", "PF01433", "PF10502", "PF00246", "PF03572", 
+    "PF00814", "PF17900", "PF01510", "PF01520", "PF05257", "PF06347", "PF08239", 
+    "PF08460", "PF01476", "PF14859", "PF01024", "PF11429"
   ];
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -530,8 +577,8 @@ export default function Dashboard({ onLogout }) {
                   >
                     <option value="">Select domain...</option>
                     {domainOptions.map(domain => (
-                      <option key={domain.code} value={domain.code}>
-                        {domain.code} - {domain.name}
+                      <option key={domain} value={domain}>
+                        {domain}
                       </option>
                     ))}
                   </select>

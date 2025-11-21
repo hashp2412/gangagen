@@ -1,41 +1,72 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { supabase } from '../lib/supabase';
 
-// Access code validation - designed for easy database integration
+// Access code validation using Supabase
 const validateAccessCode = async (code) => {
-  // Current dummy implementation
-  const validCodes = ['12345']; // This will be replaced with database call
-  
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  return validCodes.includes(code);
-  
-  // Future database integration would look like:
-  // try {
-  //   const response = await fetch('/api/validate-access-code', {
-  //     method: 'POST',
-  //     headers: { 'Content-Type': 'application/json' },
-  //     body: JSON.stringify({ accessCode: code })
-  //   });
-  //   const data = await response.json();
-  //   return data.valid;
-  // } catch (error) {
-  //   console.error('Access code validation failed:', error);
-  //   return false;
-  // }
+  try {
+    // Query the codes table to check if the code exists
+    const { data, error } = await supabase
+      .from('codes')
+      .select('code')
+      .eq('code', code)
+      .single();
+
+    if (error) {
+      // If error is "PGRST116", it means no rows found (invalid code)
+      if (error.code === 'PGRST116') {
+        return false;
+      }
+      // For other errors, log and return false
+      console.error('Error validating access code:', error);
+      return false;
+    }
+
+    // If data exists, the code is valid
+    return data !== null;
+  } catch (error) {
+    console.error('Access code validation failed:', error);
+    return false;
+  }
 };
 
 export default function AccessCodeModal({ isOpen, onClose, onSuccess }) {
   const [accessCode, setAccessCode] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [error, setError] = useState('');
+  const isAutoSubmitting = useRef(false);
+
+  // Auto-submit when 6 digits are entered
+  useEffect(() => {
+    const autoSubmit = async () => {
+      if (accessCode.length === 6 && !isValidating && !isAutoSubmitting.current) {
+        isAutoSubmitting.current = true;
+        await handleSubmit();
+        isAutoSubmitting.current = false;
+      }
+    };
+
+    autoSubmit();
+  }, [accessCode]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!accessCode.trim()) {
+    if (e) e.preventDefault();
+
+    // Validate that the code is exactly 6 digits
+    const trimmedCode = accessCode.trim();
+    if (!trimmedCode) {
       setError('Please enter an access code');
+      return;
+    }
+
+    if (trimmedCode.length !== 6) {
+      setError('Access code must be exactly 6 digits');
+      return;
+    }
+
+    if (!/^\d{6}$/.test(trimmedCode)) {
+      setError('Access code must contain only numbers');
       return;
     }
 
@@ -43,12 +74,12 @@ export default function AccessCodeModal({ isOpen, onClose, onSuccess }) {
     setError('');
 
     try {
-      const isValid = await validateAccessCode(accessCode.trim());
-      
+      const isValid = await validateAccessCode(trimmedCode);
+
       if (isValid) {
         // Store valid access in session/localStorage for the session
         sessionStorage.setItem('validAccess', 'true');
-        sessionStorage.setItem('accessCode', accessCode.trim());
+        sessionStorage.setItem('accessCode', trimmedCode);
         onSuccess();
         handleClose();
       } else {
@@ -86,9 +117,22 @@ export default function AccessCodeModal({ isOpen, onClose, onSuccess }) {
           <div className="mb-6">
             <input
               type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={accessCode}
-              onChange={(e) => setAccessCode(e.target.value)}
+              onChange={(e) => {
+                // Only allow numbers and limit to 6 digits
+                const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                setAccessCode(value);
+              }}
+              onKeyPress={(e) => {
+                // Prevent non-numeric characters from being entered
+                if (!/[0-9]/.test(e.key)) {
+                  e.preventDefault();
+                }
+              }}
               placeholder="••••••"
+              maxLength={6}
               className="input-linear w-full text-center text-lg tracking-widest font-mono"
               disabled={isValidating}
               autoFocus

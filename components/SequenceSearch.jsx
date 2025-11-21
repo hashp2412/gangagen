@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { sequenceSearchService } from '../lib/simplifiedSequenceSearch';
-import { 
-  Search, 
+import {
+  Search,
   ChevronLeft,
   ChevronRight,
   AlertCircle,
@@ -12,6 +13,7 @@ import {
 
 
 export default function SequenceSearch() {
+  const router = useRouter();
   const [searchSequence, setSearchSequence] = useState('');
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -41,19 +43,18 @@ export default function SequenceSearch() {
       setError(null);
       
       const result = await sequenceSearchService.searchBySequence(cleanedSequence, page);
-      
+
       if (result.error) {
         setError(result.error);
+        setResults(null);
       } else {
         setResults(result);
         setCurrentPage(result.currentPage);
-        
+
         if (result.count === 0) {
-          setError('No proteins found matching this sequence');
-        }
-        
-        if (result.message) {
-          setError(result.message);
+          setError(`No proteins found starting with: ${cleanedSequence}`);
+        } else {
+          setError(null);
         }
       }
     } catch (err) {
@@ -74,12 +75,24 @@ export default function SequenceSearch() {
     const input = e.target.value;
     const cleaned = validateSequence(input);
     setSearchSequence(input);
-    
+
     if (input && input !== cleaned) {
       setError('Invalid characters removed. Use only standard amino acid codes.');
     } else {
       setError(null);
     }
+  };
+
+  const handleClearSearch = () => {
+    setSearchSequence('');
+    setResults(null);
+    setError(null);
+    setCurrentPage(1);
+    sequenceSearchService.clearCache();
+  };
+
+  const handleRowClick = (proteinId) => {
+    router.push(`/details?id=${proteinId}`);
   };
 
   return (
@@ -107,7 +120,7 @@ export default function SequenceSearch() {
               Standard amino acid codes only: A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y
             </p>
             <p className="text-xs text-blue-600 mt-1">
-              💡 Tip: We search by sequence prefix. For sequences longer than 10 amino acids, we match the first 10.
+              💡 Tip: We search for proteins whose sequences START with the entered sequence.
             </p>
           </div>
 
@@ -120,7 +133,15 @@ export default function SequenceSearch() {
               <Search className="w-5 h-5" />
               {loading ? 'Searching...' : 'Search'}
             </button>
-            
+
+            <button
+              onClick={handleClearSearch}
+              className="px-6 py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-50"
+              title="Clear search"
+            >
+              Clear
+            </button>
+
             <div className="text-sm text-gray-600">
               Searches proteins by sequence prefix
             </div>
@@ -177,25 +198,41 @@ export default function SequenceSearch() {
                 </tr>
               </thead>
               <tbody>
-                {results.data.map((protein) => (
-                  <tr key={protein.id} className="hover:bg-green-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-mono">
-                      {protein.accession || protein.id}
-                    </td>
-                    <td className="px-6 py-4 text-sm max-w-xs">
-                      <div className="truncate">{protein.name || 'N/A'}</div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs">
-                      <div className="truncate">{protein.source_organism_full_name || 'N/A'}</div>
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      {protein.entries_header || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      {protein.length || 'N/A'}
-                    </td>
-                  </tr>
-                ))}
+                {results.data.map((protein) => {
+                  const searchSeq = results.searchSequence;
+                  const proteinSeq = protein.sequence || '';
+                  const matchedPart = proteinSeq.substring(0, searchSeq.length);
+                  const remainingPart = proteinSeq.substring(searchSeq.length, searchSeq.length + 20);
+
+                  return (
+                    <tr
+                      key={protein.id}
+                      onClick={() => handleRowClick(protein.id)}
+                      className="cursor-pointer hover:bg-green-50 transition-colors"
+                    >
+                      <td className="px-6 py-4 text-sm font-mono">
+                        {protein.accession || protein.id}
+                      </td>
+                      <td className="px-6 py-4 text-sm max-w-xs">
+                        <div className="truncate">{protein.name || 'N/A'}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 max-w-xs">
+                        <div className="truncate">{protein.source_organism_full_name || 'N/A'}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {protein.entries_header || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {protein.length || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 text-xs font-mono">
+                        <span className="bg-green-200 font-semibold">{matchedPart}</span>
+                        <span className="text-gray-500">{remainingPart}</span>
+                        {proteinSeq.length > searchSeq.length + 20 && '...'}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

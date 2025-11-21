@@ -3,20 +3,25 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { proteinService } from '../lib/proteinService';
-import { 
-  ArrowLeft,
-  Search, 
-  Database, 
-  History, 
-  LogOut 
-} from 'lucide-react';
+import Sidebar from './Sidebar';
+import { ArrowLeft } from 'lucide-react';
 
 const DomainScale = ({ protein }) => {
   const [hoveredDomain, setHoveredDomain] = useState(null);
-  
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+
   const sequenceLength = protein?.length || 1000;
-  const scaleWidth = 1200;
   const scaleHeight = 120;
+  const svgWidth = 1000;
+  const padding = 40; // Padding on left and right for labels
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setTooltipPosition({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+  };
   
   const parseRange = (data) => {
     if (!data || typeof data !== 'string') return null;
@@ -33,9 +38,10 @@ const DomainScale = ({ protein }) => {
   };
   
   const range = parseRange(protein?.entries_header);
-  
+
   const calculatePosition = (position) => {
-    return (position / sequenceLength) * scaleWidth;
+    // Calculate position within the available width (excluding padding)
+    return padding + (position / sequenceLength) * svgWidth;
   };
   
   const generateTicks = () => {
@@ -66,12 +72,37 @@ const DomainScale = ({ protein }) => {
   
   const { majorTicks, minorTicks } = generateTicks();
   
+  // Function to render sequence with highlighting
+  const renderSequenceWithHighlight = () => {
+    if (!protein?.sequence || !range) return null;
+
+    const sequence = protein.sequence;
+    // Positions are 1-indexed, but substring is 0-indexed
+    // So position 5 means the 5th character, which is index 4
+    const beforeDomain = sequence.substring(0, range.start - 1);
+    const domainSequence = sequence.substring(range.start - 1, range.end);
+    const afterDomain = sequence.substring(range.end);
+
+    return (
+      <div className="font-mono text-xs break-all leading-relaxed">
+        <span className="text-gray-400">{beforeDomain}</span>
+        <span className="bg-orange-500 text-white px-0.5 rounded">{domainSequence}</span>
+        <span className="text-gray-400">{afterDomain}</span>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full">
       <h3 className="text-lg font-heading text-linear-text-primary mb-4">Domain Position</h3>
-      
-      <div className="relative p-8 glass-effect rounded-3xl overflow-x-auto">
-        <svg width={scaleWidth} height={scaleHeight} className="mx-auto min-w-full">
+
+      <div className="relative p-8 glass-effect rounded-3xl">
+        <svg
+          viewBox={`0 0 ${svgWidth + padding * 2} ${scaleHeight}`}
+          className="w-full h-auto"
+          preserveAspectRatio="xMidYMid meet"
+          onMouseMove={handleMouseMove}
+        >
           <defs>
             <linearGradient id="proteinGradient" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3" />
@@ -81,9 +112,9 @@ const DomainScale = ({ protein }) => {
           </defs>
           
           <rect
-            x="0"
+            x={padding}
             y="30"
-            width={scaleWidth}
+            width={svgWidth}
             height="20"
             fill="#dcfce7"
             stroke="#bbf7d0"
@@ -100,7 +131,7 @@ const DomainScale = ({ protein }) => {
               <rect
                 x={calculatePosition(range.start)}
                 y="25"
-                width={calculatePosition(range.end - range.start)}
+                width={(range.end - range.start) / sequenceLength * svgWidth}
                 height="30"
                 fill="#f97316"
                 fillOpacity={hoveredDomain?.domain === range.domain ? 1 : 0.8}
@@ -109,7 +140,7 @@ const DomainScale = ({ protein }) => {
                 rx="5"
                 className="transition-all duration-200"
               />
-              
+
               <text
                 x={calculatePosition(range.start + (range.end - range.start) / 2)}
                 y="42"
@@ -118,28 +149,6 @@ const DomainScale = ({ protein }) => {
               >
                 {range.domain}
               </text>
-              
-              {hoveredDomain?.domain === range.domain && (
-                <g className="animate-fade-in">
-                  <rect
-                    x={calculatePosition(range.start + (range.end - range.start) / 2) - 60}
-                    y="0"
-                    width="120"
-                    height="20"
-                    fill="#22c55e"
-                    fillOpacity="0.9"
-                    rx="3"
-                  />
-                  <text
-                    x={calculatePosition(range.start + (range.end - range.start) / 2)}
-                    y="14"
-                    textAnchor="middle"
-                    className="fill-white text-xs"
-                  >
-                    {range.start} - {range.end}
-                  </text>
-                </g>
-              )}
             </g>
           )}
           
@@ -180,7 +189,7 @@ const DomainScale = ({ protein }) => {
           ))}
           
           <text
-            x={scaleWidth / 2}
+            x={svgWidth / 2 + padding}
             y="110"
             textAnchor="middle"
             className="fill-linear-text-secondary text-sm font-ui"
@@ -188,8 +197,36 @@ const DomainScale = ({ protein }) => {
             Sequence Position
           </text>
         </svg>
+
+        {/* HTML Tooltip with full sequence */}
+        {hoveredDomain?.domain === range.domain && (
+          <div
+            className="absolute z-50 bg-gray-900 text-white rounded-lg shadow-2xl pointer-events-none"
+            style={{
+              left: `${tooltipPosition.x}px`,
+              top: `${tooltipPosition.y - 20}px`,
+              transform: 'translate(-50%, -100%)',
+              width: '600px',
+            }}
+          >
+            <div className="p-4">
+              <div className="font-semibold text-sm mb-2 text-green-400">
+                {range.domain}: Position {range.start}-{range.end}
+              </div>
+              <div className="text-xs text-gray-400 mb-2">
+                Domain Length: {range.end - range.start} aa | Protein Length: {sequenceLength} aa
+              </div>
+              <div className="max-h-60 overflow-y-auto bg-gray-800 p-3 rounded border border-gray-700">
+                {renderSequenceWithHighlight()}
+              </div>
+            </div>
+            <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full">
+              <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-gray-900"></div>
+            </div>
+          </div>
+        )}
       </div>
-      
+
       <style jsx>{`
         @keyframes fade-in {
           from {
@@ -216,13 +253,7 @@ export default function ProteinDetails({ proteinId, onBack, onLogout }) {
   const [error, setError] = useState(null);
   const [activeSection, setActiveSection] = useState('explore');
   const router = useRouter();
-  
-  const menuItems = [
-    { id: 'explore', label: 'Explore Database', icon: Database },
-    { id: 'search', label: 'Search Sequence', icon: Search },
-    { id: 'saved', label: 'Saved Queries', icon: History },
-  ];
-  
+
   useEffect(() => {
     fetchProtein();
   }, [proteinId]);
@@ -231,7 +262,7 @@ export default function ProteinDetails({ proteinId, onBack, onLogout }) {
     try {
       setLoading(true);
       setError(null);
-      
+
       const data = await proteinService.fetchProteinDetails(proteinId);
       setProtein(data);
     } catch (err) {
@@ -239,6 +270,16 @@ export default function ProteinDetails({ proteinId, onBack, onLogout }) {
       setError(err.message || 'Failed to fetch protein details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle sidebar section change
+  const handleSectionChange = (sectionId) => {
+    if (sectionId === 'explore') {
+      // Go back to Dashboard
+      onBack();
+    } else {
+      setActiveSection(sectionId);
     }
   };
   
@@ -285,42 +326,13 @@ export default function ProteinDetails({ proteinId, onBack, onLogout }) {
   }
   
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen pt-20">
       {/* Sidebar */}
-      <div className="w-64 sidebar-linear">
-        
-        <nav className="mt-8 px-4">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  if (item.id === 'explore') {
-                    onBack();
-                  } else {
-                    setActiveSection(item.id);
-                  }
-                }}
-                className={`menu-item-linear w-full flex items-center px-4 py-3 text-left text-sm font-normal tracking-wide ${
-                  activeSection === item.id ? 'active' : 'text-linear-text-secondary hover:text-linear-text-primary'
-                }`}
-              >
-                <Icon className="w-5 h-5 mr-3" />
-                {item.label}
-              </button>
-            );
-          })}
-          
-          <button
-            onClick={onLogout}
-            className="menu-item-linear w-full flex items-center px-4 py-3 text-left text-sm font-normal tracking-wide text-red-500 mt-8 hover:bg-red-50"
-          >
-            <LogOut className="w-5 h-5 mr-3" />
-            Logout
-          </button>
-        </nav>
-      </div>
+      <Sidebar
+        activeSection={activeSection}
+        onSectionChange={handleSectionChange}
+        onLogout={onLogout}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
