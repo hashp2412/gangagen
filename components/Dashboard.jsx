@@ -15,8 +15,11 @@ import {
   Save,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  Check,
   Sparkles
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Range Visualization Component
 const RangeVisualization = ({ rangeData, domainBounds, proteinLength }) => {
@@ -167,14 +170,28 @@ const domains = ['All Domains', 'Bacteria', 'Archaea', 'Eukaryota', 'Virus'];
 export default function Dashboard({ onLogout }) {
   const router = useRouter();
   const mainContentRef = useRef(null); // Reference to scrolling container
+  const domainDropdownRef = useRef(null); // Reference for custom domain dropdown
   const [activeSection, setActiveSection] = useState('explore');
   const [selectedEntries, setSelectedEntries] = useState(new Set());
   const [isStateRestored, setIsStateRestored] = useState(false);
+  const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false); // Track domain dropdown state
   const [searchFilters, setSearchFilters] = useState({
     name: '',
     organism: '',
     domain: ''
   });
+
+  // Close domain dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (domainDropdownRef.current && !domainDropdownRef.current.contains(event.target)) {
+        setIsDomainDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Domain options for dropdown with names
   const domainOptions = [
@@ -222,6 +239,8 @@ export default function Dashboard({ onLogout }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(50);
   const [totalPages, setTotalPages] = useState(0);
+  const [totalCount, setTotalCount] = useState(null); // Total count of results
+  const [countLoading, setCountLoading] = useState(false); // Is count still loading?
   const [hasMore, setHasMore] = useState(false); // For pagination when count is unknown
   const [pageInput, setPageInput] = useState('');
 
@@ -358,14 +377,45 @@ export default function Dashboard({ onLogout }) {
         return;
       }
 
-      // Use the optimized service
-      const result = await proteinService.fetchProteinsOptimized(searchFilters, page);
+      // Callback function that will be called when count is ready (runs in background)
+      const handleCountUpdate = (countData) => {
+        console.log('Count update received:', countData);
+        setTotalCount(countData.count);
+        setTotalPages(countData.totalPages);
+        setCountLoading(false);
+
+        // Update sessionStorage with the new count
+        const savedState = sessionStorage.getItem('dashboardSearchState');
+        if (savedState) {
+          try {
+            const state = JSON.parse(savedState);
+            state.results.count = countData.count;
+            state.results.totalPages = countData.totalPages;
+            sessionStorage.setItem('dashboardSearchState', JSON.stringify(state));
+          } catch (err) {
+            console.error('Failed to update session storage with count:', err);
+          }
+        }
+      };
+
+      // Use the optimized service with count callback
+      const result = await proteinService.fetchProteinsOptimized(searchFilters, page, handleCountUpdate);
 
       setData(result.data);
       setFilteredData(result.data);
-      setTotalPages(result.totalPages || 0);
       setHasMore(result.hasMore || false);
       setCurrentPage(result.currentPage);
+
+      // Set count state based on whether count is available yet
+      if (result.countLoading) {
+        setCountLoading(true);
+        setTotalCount(null);
+        setTotalPages(null);
+      } else {
+        setCountLoading(false);
+        setTotalCount(result.count);
+        setTotalPages(result.totalPages || 0);
+      }
 
       // Calculate and set domain bounds
       if (result.data && result.data.length > 0) {
@@ -386,8 +436,8 @@ export default function Dashboard({ onLogout }) {
 
       sessionStorage.setItem('dashboardSearchState', JSON.stringify(stateToSave));
 
-      // Show message if no results
-      if (result.count === 0) {
+      // Show message if no results (only if we know count is 0)
+      if (result.count === 0 && !result.countLoading) {
         setError('No proteins found matching your search criteria');
       }
     } catch (err) {
@@ -543,12 +593,13 @@ export default function Dashboard({ onLogout }) {
         return (
           <div className="space-y-6">
             {/* Search Filters */}
-            <div className="bg-white p-8 mb-8 rounded-2xl shadow-lg backdrop-blur-xl bg-opacity-95 border border-gray-100">
+            <div className="bg-white p-8 mb-8 rounded-2xl shadow-lg backdrop-blur-xl bg-opacity-95 border border-gray-100 overflow-visible relative z-[100]">
               <h2 className="text-xl font-bold mb-6 text-gray-800 flex items-center gap-3">
                 <div className="w-1 h-6 bg-[#08c88a] rounded-full"></div>
                 Search Proteins
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end overflow-visible">
+                {/* Name/ID field */}
                 <div>
                   <label className="block text-xs text-linear-text-secondary mb-3 uppercase tracking-wider font-medium">
                     Name / ID
@@ -565,6 +616,7 @@ export default function Dashboard({ onLogout }) {
                   )}
                 </div>
 
+                {/* Organism field */}
                 <div>
                   <label className="block text-xs text-linear-text-secondary mb-3 uppercase tracking-wider font-medium">
                     Organism
@@ -581,48 +633,112 @@ export default function Dashboard({ onLogout }) {
                   )}
                 </div>
 
-                <div>
+                {/* Custom Domain dropdown - expands when clicked (takes space of buttons) */}
+                <div
+                  className={`overflow-visible ${isDomainDropdownOpen ? 'col-span-2' : ''}`}
+                  ref={domainDropdownRef}
+                >
                   <label className="block text-xs text-linear-text-secondary mb-3 uppercase tracking-wider font-medium">
                     Domain
                   </label>
-                  <select
-                    value={searchFilters.domain}
-                    onChange={(e) => handleFilterChange('domain', e.target.value)}
-                    className="input-linear w-full cursor-pointer"
-                  >
-                    <option value="">Select domain...</option>
-                    {domainOptions.map(domain => (
-                      <option key={domain.code} value={domain.code}>
-                        {domain.code} - {domain.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative overflow-visible">
+                    {/* Custom dropdown trigger */}
+                    <button
+                      type="button"
+                      onClick={() => setIsDomainDropdownOpen(!isDomainDropdownOpen)}
+                      className={`input-linear w-full cursor-pointer bg-white pr-10 text-left flex items-center justify-between ${
+                        isDomainDropdownOpen ? 'border-[#08c88a] ring-2 ring-[#08c88a]/20' : ''
+                      }`}
+                    >
+                      <span className={`truncate ${searchFilters.domain ? 'text-gray-800' : 'text-gray-400'}`}>
+                        {searchFilters.domain
+                          ? `${searchFilters.domain} - ${domainOptions.find(d => d.code === searchFilters.domain)?.name || ''}`
+                          : 'Select domain...'}
+                      </span>
+                      <ChevronDown
+                        className={`w-5 h-5 flex-shrink-0 text-[#08c88a] transition-transform duration-150 ${
+                          isDomainDropdownOpen ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {/* Custom dropdown options */}
+                    <AnimatePresence>
+                      {isDomainDropdownOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                          transition={{ duration: 0.1 }}
+                          className="absolute z-[9999] w-full mt-2 bg-white border-2 border-gray-100 rounded-xl shadow-xl max-h-[30rem] overflow-y-auto"
+                        >
+                          {/* Clear option */}
+                          <div
+                            onClick={() => {
+                              handleFilterChange('domain', '');
+                              setIsDomainDropdownOpen(false);
+                            }}
+                            className="px-4 py-3 cursor-pointer text-gray-400 hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100"
+                          >
+                            Select domain...
+                          </div>
+                          {/* Domain options */}
+                          {domainOptions.map((domain, index) => (
+                            <div
+                              key={domain.code}
+                              onClick={() => {
+                                handleFilterChange('domain', domain.code);
+                                setIsDomainDropdownOpen(false);
+                              }}
+                              className={`px-4 py-3 cursor-pointer transition-colors duration-150 flex items-center justify-between ${
+                                searchFilters.domain === domain.code
+                                  ? 'bg-gradient-to-r from-[#f0fdf4] to-[#dcfce7] text-[#047857]'
+                                  : 'text-gray-700 hover:bg-green-50'
+                              } ${index !== domainOptions.length - 1 ? 'border-b border-gray-50' : ''}`}
+                            >
+                              <span>
+                                <span className="font-semibold text-[#08c88a]">{domain.code}</span>
+                                <span className="text-gray-400 mx-2">-</span>
+                                <span>{domain.name}</span>
+                              </span>
+                              {searchFilters.domain === domain.code && (
+                                <Check className="w-5 h-5 text-[#08c88a]" />
+                              )}
+                            </div>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleSearch}
-                    className="bg-black text-white border-0 rounded-xl px-6 py-3 font-semibold text-sm tracking-wide uppercase transition-all duration-300 ease-in-out shadow-md relative overflow-hidden flex-1 flex items-center justify-center gap-2 hover:bg-gray-800"
-                  >
-                    <Search className="w-5 h-5" />
-                    Execute
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSearchFilters({ name: '', organism: '', domain: '' });
-                      setData([]);
-                      setFilteredData([]);
-                      setError(null);
-                      proteinService.clearCache();
-                      // Clear saved search state
-                      sessionStorage.removeItem('dashboardSearchState');
-                    }}
-                    className="px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-300 font-semibold text-gray-700"
-                    title="Clear filters"
-                  >
-                    Clear
-                  </button>
-                </div>
+                {/* Execute and Clear buttons - hidden when domain dropdown is open */}
+                {!isDomainDropdownOpen && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSearch}
+                      className="bg-black text-white border-0 rounded-xl px-6 py-3 font-semibold text-sm tracking-wide uppercase transition-all duration-300 ease-in-out shadow-md relative overflow-hidden flex-1 flex items-center justify-center gap-2 hover:bg-gray-800"
+                    >
+                      <Search className="w-5 h-5" />
+                      Execute
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSearchFilters({ name: '', organism: '', domain: '' });
+                        setData([]);
+                        setFilteredData([]);
+                        setError(null);
+                        proteinService.clearCache();
+                        // Clear saved search state
+                        sessionStorage.removeItem('dashboardSearchState');
+                      }}
+                      className="px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-300 font-semibold text-gray-700"
+                      title="Clear filters"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -765,12 +881,25 @@ export default function Dashboard({ onLogout }) {
                     {/* Left - Entry count */}
                     <div className="flex items-center space-x-2 text-sm text-linear-text-secondary">
                       <span>
-                        {totalPages === null ? (
-                          // Unknown total - show page number with "many results"
-                          `Page ${currentPage} - Many results${hasMore ? ' (more available)' : ''}`
+                        {countLoading ? (
+                          // Count is loading - show current page data with loading indicator
+                          <span className="flex items-center gap-2">
+                            {`Showing ${((currentPage - 1) * itemsPerPage) + 1} to ${((currentPage - 1) * itemsPerPage) + filteredData.length}`}
+                            <span className="text-gray-400">of</span>
+                            <span className="inline-flex items-center gap-1 text-[#08c88a]">
+                              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              counting...
+                            </span>
+                          </span>
+                        ) : totalCount !== null ? (
+                          // Count is known - show full info
+                          `Showing ${((currentPage - 1) * itemsPerPage) + 1} to ${Math.min(currentPage * itemsPerPage, totalCount)} of ${totalCount.toLocaleString()} entries`
                         ) : (
-                          // Known total - show normal count
-                          `Showing ${((currentPage - 1) * itemsPerPage) + 1} to ${Math.min(currentPage * itemsPerPage, filteredData.length)} of ${filteredData.length} entries`
+                          // Unknown total (fallback) - show page number with hasMore
+                          `Page ${currentPage} - Many results${hasMore ? ' (more available)' : ''}`
                         )}
                       </span>
                     </div>
@@ -787,48 +916,37 @@ export default function Dashboard({ onLogout }) {
                         Previous
                       </button>
 
-                      {/* Page numbers */}
-                      <div className="flex space-x-1">
+                      {/* Page numbers - shows: currentPage, nextPage, ... lastPage */}
+                      <div className="flex space-x-1 items-center">
                         {totalPages !== null && totalPages > 0 ? (
                           <>
-                            {/* First page */}
-                            {currentPage > 3 && (
-                              <>
-                                <button
-                                  onClick={() => handlePageChange(1)}
-                                  className="px-4 py-3 text-sm bg-white text-gray-700 hover:bg-green-50 hover:text-[#08c88a] transition-all duration-300 rounded-xl border border-gray-200"
-                                >
-                                  1
-                                </button>
-                                {currentPage > 4 && <span className="px-2 text-linear-text-secondary">...</span>}
-                              </>
+                            {/* Current page */}
+                            <button
+                              onClick={() => handlePageChange(currentPage)}
+                              className="px-4 py-3 text-sm transition-all duration-300 rounded-xl border bg-[#08c88a] text-white border-[#08c88a] shadow-lg"
+                            >
+                              {currentPage}
+                            </button>
+
+                            {/* Next page (if exists and not the last page) */}
+                            {currentPage + 1 <= totalPages && currentPage + 1 < totalPages && (
+                              <button
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                className="px-4 py-3 text-sm transition-all duration-300 rounded-xl border bg-white text-gray-700 border-gray-200 hover:bg-green-50 hover:text-[#08c88a] hover:border-green-200"
+                              >
+                                {currentPage + 1}
+                              </button>
                             )}
 
-                            {/* Current page range */}
-                            {[...Array(5)].map((_, i) => {
-                              const page = currentPage - 2 + i;
-                              if (page < 1 || page > totalPages) return null;
-                              return (
-                                <button
-                                  key={page}
-                                  onClick={() => handlePageChange(page)}
-                                  className={`px-4 py-3 text-sm transition-all duration-300 rounded-xl border ${page === currentPage
-                                      ? 'bg-[#08c88a] text-white border-[#08c88a] shadow-lg'
-                                      : 'bg-white text-gray-700 border-gray-200 hover:bg-green-50 hover:text-[#08c88a] hover:border-green-200'
-                                    }`}
-                                >
-                                  {page}
-                                </button>
-                              );
-                            })}
-
-                            {/* Last page */}
-                            {currentPage < totalPages - 2 && (
+                            {/* Ellipsis and last page (if current page is not at or near the end) */}
+                            {currentPage < totalPages && (
                               <>
-                                {currentPage < totalPages - 3 && <span className="px-2 text-linear-text-secondary">...</span>}
+                                {currentPage + 1 < totalPages && (
+                                  <span className="px-2 text-linear-text-secondary">...</span>
+                                )}
                                 <button
                                   onClick={() => handlePageChange(totalPages)}
-                                  className="px-4 py-3 text-sm bg-white text-gray-700 hover:bg-green-50 hover:text-[#08c88a] transition-all duration-300 rounded-xl border border-gray-200"
+                                  className="px-4 py-3 text-sm transition-all duration-300 rounded-xl border bg-white text-gray-700 border-gray-200 hover:bg-green-50 hover:text-[#08c88a] hover:border-green-200"
                                 >
                                   {totalPages}
                                 </button>
@@ -859,20 +977,32 @@ export default function Dashboard({ onLogout }) {
                       <form onSubmit={handlePageInputSubmit} className="flex items-center space-x-2 ml-4">
                         <span className="text-sm text-gray-600 font-medium">Go to:</span>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           min="1"
                           max={totalPages || undefined}
                           value={pageInput}
-                          onChange={(e) => setPageInput(e.target.value)}
+                          onChange={(e) => {
+                            // Only allow numeric input (no alphabets, no symbols)
+                            // Remove non-digits first, then remove leading zeros
+                            const value = e.target.value
+                              .replace(/[^0-9]/g, '')  // Remove non-digits
+                              .replace(/^0+/, '');      // Remove leading zeros (prevents 0, 00, 01, etc.)
+                            setPageInput(value);
+                          }}
                           placeholder="Page"
                           className="w-16 px-3 py-3 text-sm bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-[#08c88a] transition-all duration-300"
                         />
-                        <button
-                          type="submit"
-                          className="px-6 py-3 text-sm bg-[#08c88a] text-white hover:bg-[#0ab079] transition-all duration-300 rounded-xl font-medium shadow-md hover:shadow-lg"
-                        >
-                          Go
-                        </button>
+                        {/* Go button only shows when input has a value */}
+                        {pageInput && (
+                          <button
+                            type="submit"
+                            className="px-6 py-3 text-sm bg-[#08c88a] text-white hover:bg-[#0ab079] transition-all duration-300 rounded-xl font-medium shadow-md hover:shadow-lg"
+                          >
+                            Go
+                          </button>
+                        )}
                       </form>
                     </div>
 
