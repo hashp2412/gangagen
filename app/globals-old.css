@@ -37,7 +37,7 @@
     font-weight: 900 !important;
   }
   
-  .font-space {
+  .font-manrope {
     font-family: 'Space Grotesk', sans-serif !important;
   }
   
@@ -293,7 +293,7 @@ body::after {
   color: white;
   border: none;
   border-radius: 16px;
-  padding: 14px 32px;
+  padding: 14px 28px;
   font-weight: 600;
   font-size: 14px;
   letter-spacing: 0.5px;

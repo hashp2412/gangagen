@@ -22,10 +22,10 @@ const DomainScale = ({ protein }) => {
       y: e.clientY - rect.top
     });
   };
-  
+
   const parseRange = (data) => {
     if (!data || typeof data !== 'string') return null;
-    
+
     const matches = data.match(/([A-Z0-9]+)\((\d+)[\.\-]+(\d+)\)/);
     if (matches && matches.length >= 4) {
       return {
@@ -36,40 +36,98 @@ const DomainScale = ({ protein }) => {
     }
     return null;
   };
-  
+
   const range = parseRange(protein?.entries_header);
 
-  const calculatePosition = (position) => {
-    // Calculate position within the available width (excluding padding)
-    return padding + (position / sequenceLength) * svgWidth;
+  // Calculate view window - focus on domain if it's relatively small
+  const calculateViewWindow = () => {
+    if (!range) return { start: 0, end: sequenceLength };
+
+    const domainLength = range.end - range.start;
+    const domainRatio = domainLength / sequenceLength;
+
+    // If domain is less than 5% of the sequence, zoom in
+    if (domainRatio < 0.05) {
+      const domainCenter = (range.start + range.end) / 2;
+      const windowSize = Math.max(domainLength * 10, 500); // Show at least 10x domain size or 500aa
+
+      let windowStart = Math.max(0, Math.floor(domainCenter - windowSize / 2));
+      let windowEnd = Math.min(sequenceLength, Math.ceil(domainCenter + windowSize / 2));
+
+      // Adjust if we hit boundaries
+      if (windowEnd - windowStart < windowSize) {
+        if (windowStart === 0) {
+          windowEnd = Math.min(sequenceLength, windowSize);
+        } else if (windowEnd === sequenceLength) {
+          windowStart = Math.max(0, sequenceLength - windowSize);
+        }
+      }
+
+      return { start: windowStart, end: windowEnd };
+    }
+
+    // Show full sequence for larger domains
+    return { start: 0, end: sequenceLength };
   };
-  
+
+  const viewWindow = calculateViewWindow();
+  const viewLength = viewWindow.end - viewWindow.start;
+
+  const calculatePosition = (position) => {
+    // Calculate position relative to the view window
+    return padding + ((position - viewWindow.start) / viewLength) * svgWidth;
+  };
+
   const generateTicks = () => {
     const majorTicks = [];
     const minorTicks = [];
-    const majorInterval = 50;
-    const minorInterval = 10;
-    
-    // Generate major ticks every 50
-    for (let i = 0; i <= sequenceLength; i += majorInterval) {
-      majorTicks.push(i);
+
+    // Dynamically calculate intervals based on view length
+    let majorInterval, minorInterval;
+    if (viewLength <= 100) {
+      majorInterval = 10;
+      minorInterval = 5;
+    } else if (viewLength <= 500) {
+      majorInterval = 50;
+      minorInterval = 10;
+    } else if (viewLength <= 1000) {
+      majorInterval = 100;
+      minorInterval = 25;
+    } else if (viewLength <= 5000) {
+      majorInterval = 500;
+      minorInterval = 100;
+    } else {
+      majorInterval = 1000;
+      minorInterval = 200;
     }
-    
-    // Always include the sequence length as the final major tick if it's not already included
-    if (majorTicks[majorTicks.length - 1] !== sequenceLength) {
-      majorTicks.push(sequenceLength);
+
+    // Generate major ticks
+    const firstMajor = Math.ceil(viewWindow.start / majorInterval) * majorInterval;
+    for (let i = firstMajor; i <= viewWindow.end; i += majorInterval) {
+      if (i >= viewWindow.start && i <= viewWindow.end) {
+        majorTicks.push(i);
+      }
     }
-    
-    // Generate minor ticks every 10 (excluding positions that are already major ticks)
-    for (let i = 0; i <= sequenceLength; i += minorInterval) {
-      if (!majorTicks.includes(i)) {
+
+    // Always include view start and end
+    if (!majorTicks.includes(viewWindow.start)) {
+      majorTicks.unshift(viewWindow.start);
+    }
+    if (!majorTicks.includes(viewWindow.end)) {
+      majorTicks.push(viewWindow.end);
+    }
+
+    // Generate minor ticks
+    const firstMinor = Math.ceil(viewWindow.start / minorInterval) * minorInterval;
+    for (let i = firstMinor; i <= viewWindow.end; i += minorInterval) {
+      if (i >= viewWindow.start && i <= viewWindow.end && !majorTicks.includes(i)) {
         minorTicks.push(i);
       }
     }
-    
+
     return { majorTicks, minorTicks };
   };
-  
+
   const { majorTicks, minorTicks } = generateTicks();
   
   // Function to render sequence with highlighting
@@ -86,15 +144,24 @@ const DomainScale = ({ protein }) => {
     return (
       <div className="font-mono text-xs break-all leading-relaxed">
         <span className="text-gray-400">{beforeDomain}</span>
-        <span className="bg-orange-500 text-white px-0.5 rounded">{domainSequence}</span>
+        <span className="bg-[#08c88a] text-white px-0.5 rounded">{domainSequence}</span>
         <span className="text-gray-400">{afterDomain}</span>
       </div>
     );
   };
 
+  const isZoomed = viewWindow.start > 0 || viewWindow.end < sequenceLength;
+
   return (
     <div className="w-full">
-      <h3 className="text-lg font-heading text-linear-text-primary mb-4">Domain Position</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-bold text-linear-text-primary">Domain Position</h3>
+        {isZoomed && (
+          <div className="text-xs text-linear-text-secondary font-mono bg-green-50 px-3 py-1 rounded-full">
+            Zoomed View: {viewWindow.start}-{viewWindow.end} of {sequenceLength} aa
+          </div>
+        )}
+      </div>
 
       <div className="relative p-8 glass-effect rounded-3xl">
         <svg
@@ -105,44 +172,44 @@ const DomainScale = ({ protein }) => {
         >
           <defs>
             <linearGradient id="proteinGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3" />
-              <stop offset="50%" stopColor="#f97316" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="#22c55e" stopOpacity="0.3" />
+              <stop offset="0%" stopColor="#0ab079" stopOpacity="0.3" />
+              <stop offset="50%" stopColor="#08c88a" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#07eea5" stopOpacity="0.3" />
             </linearGradient>
           </defs>
-          
+
           <rect
             x={padding}
             y="30"
             width={svgWidth}
             height="20"
-            fill="#dcfce7"
-            stroke="#bbf7d0"
+            fill="#d1fae5"
+            stroke="#a7f3d0"
             strokeWidth="2"
             rx="10"
           />
-          
-          {range && (
+
+          {range && range.end >= viewWindow.start && range.start <= viewWindow.end && (
             <g
               onMouseEnter={() => setHoveredDomain(range)}
               onMouseLeave={() => setHoveredDomain(null)}
               className="cursor-pointer"
             >
               <rect
-                x={calculatePosition(range.start)}
+                x={calculatePosition(Math.max(range.start, viewWindow.start))}
                 y="25"
-                width={(range.end - range.start) / sequenceLength * svgWidth}
+                width={((Math.min(range.end, viewWindow.end) - Math.max(range.start, viewWindow.start)) / viewLength) * svgWidth}
                 height="30"
-                fill="#f97316"
+                fill="#08c88a"
                 fillOpacity={hoveredDomain?.domain === range.domain ? 1 : 0.8}
-                stroke="#ea580c"
+                stroke="#0ab079"
                 strokeWidth="2"
                 rx="5"
                 className="transition-all duration-200"
               />
 
               <text
-                x={calculatePosition(range.start + (range.end - range.start) / 2)}
+                x={calculatePosition((Math.max(range.start, viewWindow.start) + Math.min(range.end, viewWindow.end)) / 2)}
                 y="42"
                 textAnchor="middle"
                 className="fill-white text-sm font-semibold"
@@ -210,7 +277,7 @@ const DomainScale = ({ protein }) => {
             }}
           >
             <div className="p-4">
-              <div className="font-semibold text-sm mb-2 text-green-400">
+              <div className="font-semibold text-sm mb-2 text-[#08c88a]">
                 {range.domain}: Position {range.start}-{range.end}
               </div>
               <div className="text-xs text-gray-400 mb-2">
@@ -251,7 +318,7 @@ export default function ProteinDetails({ proteinId, onBack, onLogout }) {
   const [protein, setProtein] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeSection, setActiveSection] = useState('explore');
+  const [activeSection, setActiveSection] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -275,12 +342,10 @@ export default function ProteinDetails({ proteinId, onBack, onLogout }) {
 
   // Handle sidebar section change
   const handleSectionChange = (sectionId) => {
-    if (sectionId === 'explore') {
-      // Go back to Dashboard
-      onBack();
-    } else {
-      setActiveSection(sectionId);
-    }
+    // Store the desired section in sessionStorage
+    sessionStorage.setItem('dashboardSection', sectionId);
+    // Navigate back to dashboard - it will read the section and switch to it
+    onBack();
   };
   
   if (loading) {
@@ -298,7 +363,7 @@ export default function ProteinDetails({ proteinId, onBack, onLogout }) {
           <p className="mb-4">{error}</p>
           <button
             onClick={onBack}
-            className="btn-linear px-4 py-2 flex items-center gap-2"
+            className="btn-linear px-6 py-3 rounded-xl flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             Go Back
@@ -315,7 +380,7 @@ export default function ProteinDetails({ proteinId, onBack, onLogout }) {
           <p className="mb-4">Protein not found</p>
           <button
             onClick={onBack}
-            className="btn-linear px-4 py-2 flex items-center gap-2"
+            className="btn-linear px-6 py-3 rounded-xl flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
             Go Back
@@ -326,7 +391,7 @@ export default function ProteinDetails({ proteinId, onBack, onLogout }) {
   }
   
   return (
-    <div className="flex h-screen pt-20">
+    <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
       <Sidebar
         activeSection={activeSection}
@@ -335,48 +400,39 @@ export default function ProteinDetails({ proteinId, onBack, onLogout }) {
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-
+      <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
         {/* Content */}
-        <main className="flex-1 overflow-auto p-8 relative">
-          <div className="floating-shapes">
-            <div className="floating-shape"></div>
-            <div className="floating-shape"></div>
-            <div className="floating-shape"></div>
-            <div className="floating-shape"></div>
-            <div className="floating-shape"></div>
-            <div className="floating-shape"></div>
-          </div>
-          <div className="max-w-6xl mx-auto">
+        <main className="flex-1 overflow-auto">
+          <div className="max-w-6xl mx-auto px-8 py-8">
             <button
               onClick={onBack}
               className="mb-6 flex items-center gap-2 text-linear-text-secondary hover:text-linear-text-primary transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
-              {protein.accession}
+              <span className="font-mono">{protein.accession}</span>
             </button>
-            
+
             <div className="space-y-6">
               <div className="card-linear p-8">
                 <div className="space-y-3">
                   <div>
-                    <p className="text-sm font-body text-linear-text-primary">
-                      <span className="font-semibold font-ui">Name:</span> {protein.name || 'N/A'}
+                    <p className="text-sm text-linear-text-primary">
+                      <span className="font-semibold">Name:</span> {protein.name || 'N/A'}
                     </p>
                   </div>
-                  
+
                   <div>
-                    <p className="text-sm font-body text-linear-text-primary">
-                      <span className="font-semibold font-ui">Organism:</span> {protein.source_organism_scientific_name || 'N/A'}
+                    <p className="text-sm text-linear-text-primary">
+                      <span className="font-semibold">Organism:</span> {protein.source_organism_scientific_name || 'N/A'}
                     </p>
                   </div>
-                  
+
                   <div>
-                    <p className="text-sm font-body text-linear-text-primary">
-                      <span className="font-semibold font-ui">Sequence Length:</span> {protein.length || 'N/A'} amino acids
+                    <p className="text-sm text-linear-text-primary">
+                      <span className="font-semibold">Sequence Length:</span> {protein.length || 'N/A'} amino acids
                     </p>
                   </div>
-                  
+
                   {protein.description && (
                     <div>
                       <p className="text-sm text-linear-text-primary">
@@ -386,14 +442,14 @@ export default function ProteinDetails({ proteinId, onBack, onLogout }) {
                   )}
                 </div>
               </div>
-              
+
               <div className="card-linear p-8">
                 <DomainScale protein={protein} />
               </div>
-              
+
               {protein.sequence && (
                 <div className="card-linear p-8">
-                  <h3 className="text-lg font-heading text-linear-text-primary mb-4">Sequence</h3>
+                  <h3 className="text-lg font-bold text-linear-text-primary mb-4">Sequence</h3>
                   <div className="font-jetbrains text-sm text-linear-text-secondary bg-gray-50 p-4 rounded-lg overflow-x-auto">
                     <pre className="whitespace-pre-wrap break-all">{protein.sequence}</pre>
                   </div>

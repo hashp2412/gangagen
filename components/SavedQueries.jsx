@@ -144,6 +144,8 @@ export default function SavedQueries() {
   };
 
   const handleRowClick = (proteinId) => {
+    // Save current section so we return to Saved Queries when coming back
+    sessionStorage.setItem('dashboardSection', 'saved');
     // Navigate to details page with protein ID as query parameter
     router.push(`/details?id=${proteinId}`);
   };
@@ -169,7 +171,7 @@ export default function SavedQueries() {
             <p className="text-linear-text-secondary mb-4">{error}</p>
             <button
               onClick={fetchSavedProteins}
-              className="btn-linear px-4 py-2 text-sm"
+              className="btn-linear px-6 py-3 rounded-xl text-sm"
             >
               Try Again
             </button>
@@ -201,7 +203,7 @@ export default function SavedQueries() {
       <div className="card-linear p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-heading text-linear-text-primary mb-2">Saved Proteins</h2>
+            <h2 className="text-2xl font-bold text-linear-text-primary mb-2">Saved Proteins</h2>
             <div className="flex items-center gap-6 text-sm text-linear-text-secondary">
               <div className="flex items-center gap-2">
                 <Database className="w-4 h-4" />
@@ -216,14 +218,14 @@ export default function SavedQueries() {
               <>
                 <button
                   onClick={() => handleExport(true)}
-                  className="px-4 py-2 text-sm bg-green-100 text-green-800 rounded-lg hover:bg-green-200 transition-colors flex items-center gap-2"
+                  className="px-6 py-3 text-sm bg-green-100 text-green-800 rounded-xl hover:bg-green-200 transition-all duration-300 flex items-center gap-2 font-medium"
                 >
                   <Download className="w-4 h-4" />
                   <span>Export Selected ({selectedProteins.size})</span>
                 </button>
                 <button
                   onClick={() => handleDelete(true)}
-                  className="px-4 py-2 text-sm bg-red-100 text-red-800 rounded-lg hover:bg-red-200 transition-colors flex items-center gap-2"
+                  className="px-6 py-3 text-sm bg-red-100 text-red-800 rounded-xl hover:bg-red-200 transition-all duration-300 flex items-center gap-2 font-medium"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>Delete Selected ({selectedProteins.size})</span>
@@ -234,14 +236,14 @@ export default function SavedQueries() {
               <>
                 <button
                   onClick={() => handleExport(false)}
-                  className="px-4 py-2 text-sm bg-green-100 text-green-800 rounded-lg hover:bg-green-200 transition-colors flex items-center gap-2"
+                  className="px-6 py-3 text-sm bg-green-100 text-green-800 rounded-xl hover:bg-green-200 transition-all duration-300 flex items-center gap-2 font-medium"
                 >
                   <Download className="w-4 h-4" />
                   <span>Export All</span>
                 </button>
                 <button
                   onClick={() => handleDelete(false)}
-                  className="px-4 py-2 text-sm bg-red-100 text-red-800 rounded-lg hover:bg-red-200 transition-colors flex items-center gap-2"
+                  className="px-6 py-3 text-sm bg-red-100 text-red-800 rounded-xl hover:bg-red-200 transition-all duration-300 flex items-center gap-2 font-medium"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>Delete All</span>
@@ -254,11 +256,11 @@ export default function SavedQueries() {
 
       {/* Saved Proteins Table */}
       <div className="table-linear overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-hidden">
           <table className="w-full">
             <thead>
               <tr>
-                <th className="w-12 px-6 py-4 text-left text-xs font-ui text-linear-text-secondary uppercase tracking-wider">
+                <th className="w-12 px-6 py-4 text-left text-xs font-semibold text-linear-text-secondary uppercase tracking-wider">
                   <input
                     type="checkbox"
                     checked={isAllSelected()}
@@ -269,22 +271,19 @@ export default function SavedQueries() {
                     className="h-4 w-4 text-green-600 accent-green-500 focus:ring-green-500 focus:ring-2 rounded"
                   />
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-ui text-linear-text-secondary uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs text-white uppercase tracking-widest font-semibold">
                   ID
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-ui text-linear-text-secondary uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs text-white uppercase tracking-widest font-semibold">
                   Name
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-ui text-linear-text-secondary uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs text-white uppercase tracking-widest font-semibold">
                   Organism
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-ui text-linear-text-secondary uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs text-white uppercase tracking-widest font-semibold">
                   Domain
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-ui text-linear-text-secondary uppercase tracking-wider">
-                  Saved Date
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-ui text-linear-text-secondary uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs text-white uppercase tracking-widest font-semibold">
                   Actions
                 </th>
               </tr>
@@ -327,10 +326,7 @@ export default function SavedQueries() {
                   <td className="px-6 py-4 text-sm text-linear-text-secondary">
                     {protein.entries_header || 'N/A'}
                   </td>
-                  <td className="px-6 py-4 text-sm text-linear-text-secondary">
-                    {new Date(protein.saved_date).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap flex justify-center">
                     <button
                       onClick={async () => {
                         if (!window.confirm('Are you sure you want to delete this protein?')) {

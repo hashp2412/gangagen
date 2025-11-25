@@ -71,14 +71,14 @@ export default function Navbar() {
                     boxShadow: '0 2px 20px rgba(0, 0, 0, 0.05)'
                 }}
             >
-                <div className="w-[95%] mx-auto">
-                    <div className="relative flex items-center h-20">
+                <div className="max-w-7xl mx-auto px-6">
+                    <div className="flex items-center justify-between h-20">
                         {/* Logo */}
                         <div className="flex-shrink-0">
                             <Link href="/" className="text-xl font-bold">
-                                <motion.div 
+                                <motion.div
                                     className="w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-xl rounded-2xl shadow-lg"
-                                    whileHover={{ 
+                                    whileHover={{
                                         scale: 1.1,
                                         background: 'linear-gradient(to bottom right, #fb923c, #ea580c)'
                                     }}
@@ -89,27 +89,9 @@ export default function Navbar() {
                                 </motion.div>
                             </Link>
                         </div>
-                        
-                        {/* Absolutely centered text */}
-                        <motion.div 
-                            className="absolute left-1/2 transform -translate-x-1/2 flex items-center"
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2, duration: 0.6 }}
-                        >
-                            <div className="font-space text-xl gradient-text-modern font-semibold tracking-wide">
-                                GangaGen AI EctoLysin
-                            </div>
-                            <motion.div 
-                                className="mx-6 w-px h-6 bg-gradient-to-b from-green-500 to-orange-500"
-                                initial={{ scaleY: 0 }}
-                                animate={{ scaleY: 1 }}
-                                transition={{ delay: 0.4, duration: 0.4 }}
-                            />
-                            <div className="font-manrope text-sm text-gray-600 font-medium uppercase tracking-widest">
-                                Powered by Orbuculum
-                            </div>
-                        </motion.div>
+
+                        {/* Center space for title if needed */}
+                        <div className="flex-1"></div>
                     </div>
                 </div>
         </motion.nav>

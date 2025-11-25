@@ -34,32 +34,39 @@ export default function Sidebar({
   menuItems = defaultMenuItems
 }) {
   return (
-    <div className="w-64 sidebar-linear">
-      <nav className="mt-8 px-4 flex flex-col gap-y-4">
+    <div className="w-80 sidebar-linear flex flex-col rounded-r-3xl shadow-4xl">
+      <nav className="mt-8 px-6 flex flex-col gap-y-2">
+        <div className="mb-6 px-2">
+          <div className="text-xl gradient-text-modern font-semibold tracking-wide">
+            GangaGen AI EctoLysin
+          </div>
+          <div className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mt-1">
+            Powered by Orbuculum
+          </div>
+        </div>
         {menuItems.map((item) => {
           const Icon = item.icon;
           return (
             <button
               key={item.id}
               onClick={() => onSectionChange(item.id)}
-              className={`menu-item-linear w-full flex items-center px-4 py-3 text-left text-sm font-normal tracking-wide ${
-                activeSection === item.id
+              className={`menu-item-linear w-full flex items-center px-6 py-3 text-left text-sm font-normal tracking-wide rounded-xl transition-all ${activeSection === item.id
                   ? 'active'
                   : 'text-linear-text-secondary hover:text-linear-text-primary'
-              }`}
+                }`}
             >
-              <Icon className="w-5 h-5 mr-3" />
-              {item.label}
+              <Icon className="w-5 h-5 mr-3 flex-shrink-0" />
+              <span>{item.label}</span>
             </button>
           );
         })}
 
         <button
           onClick={onLogout}
-          className="menu-item-linear w-full flex items-center px-4 py-3 text-left text-sm font-normal tracking-wide text-red-500 hover:bg-red-50"
+          className="menu-item-linear w-full flex items-center px-6 py-3 text-left text-sm font-normal tracking-wide text-red-500 hover:bg-red-50 rounded-xl transition-all mt-4"
         >
-          <LogOut className="w-5 h-5 mr-3" />
-          Logout
+          <LogOut className="w-5 h-5 mr-3 flex-shrink-0" />
+          <span>Logout</span>
         </button>
       </nav>
     </div>

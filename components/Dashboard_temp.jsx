@@ -962,7 +962,7 @@ export default function Dashboard({ onLogout }) {
   };
 
   return (
-    <div className="flex h-screen pt-20">
+    <div className="flex h-screen ">
       {/* Sidebar */}
       <Sidebar
         activeSection={activeSection}
