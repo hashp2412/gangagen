@@ -20,7 +20,7 @@ import {
 
 // Range Visualization Component
 const RangeVisualization = ({ rangeData, domainBounds, proteinLength }) => {
-  const [hoveredDomain, setHoveredDomain] = useState(null);
+  const [hoveredSegment, setHoveredSegment] = useState(null); // { index, range, domain }
   const [isVisible, setIsVisible] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
 
@@ -30,96 +30,128 @@ const RangeVisualization = ({ rangeData, domainBounds, proteinLength }) => {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleMouseMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setTooltipPosition({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
-  };
-
-  // Parse range data - expecting format like "PF03245(27...149)"
+  // Parse range data - handles single and multiple ranges
+  // Examples: "PF03245(27...149)" or "PF00704(34...320,355...427)"
   const parseRange = (data) => {
     if (!data || typeof data !== 'string') return null;
 
-    // Match patterns like "PF03245(27...149)" or "PF03245(27-149)"
-    const matches = data.match(/([A-Z0-9]+)\((\d+)[\.\-]+(\d+)\)/);
-    if (matches && matches.length >= 4) {
-      return {
-        domain: matches[1],
-        start: parseInt(matches[2]),
-        end: parseInt(matches[3])
-      };
+    // Match the domain code and everything inside parentheses
+    const domainMatch = data.match(/([A-Z0-9]+)\(([^)]+)\)/);
+    if (!domainMatch || domainMatch.length < 3) return null;
+
+    const domain = domainMatch[1];
+    const rangesStr = domainMatch[2];
+
+    // Parse all ranges (comma-separated)
+    const rangeMatches = rangesStr.matchAll(/(\d+)[\.\-]+(\d+)/g);
+    const ranges = [];
+
+    for (const match of rangeMatches) {
+      ranges.push({
+        start: parseInt(match[1]),
+        end: parseInt(match[2])
+      });
     }
-    return null;
+
+    if (ranges.length === 0) return null;
+
+    return {
+      domain,
+      ranges
+    };
   };
 
-  const range = parseRange(rangeData);
+  const parsedData = parseRange(rangeData);
 
-  if (!range) {
+  if (!parsedData) {
     return <span className="text-sm text-linear-text-secondary">{rangeData || 'N/A'}</span>;
   }
 
   // Use protein length as the full scale (100% = protein length)
-  const scaleStart = 0;
   const scaleEnd = proteinLength || 200; // Full protein length
   const blockWidth = 200; // px - width of the visualization bar
 
-  // Calculate positions
-  const rangeStart = range.start;
-  const rangeEnd = range.end;
-
-  // Calculate percentage positions relative to FULL protein length
-  // Example: if protein is 201 aa and domain is 27-149
-  // startPercent = (27 / 201) * 100 = 13.4%
-  // endPercent = (149 / 201) * 100 = 74.1%
-  const startPercent = Math.max(0, Math.min(100, (rangeStart / scaleEnd) * 100));
-  const endPercent = Math.max(0, Math.min(100, (rangeEnd / scaleEnd) * 100));
-  const widthPercent = endPercent - startPercent;
-
   return (
-    <div
-      className="relative inline-block group"
-      onMouseEnter={() => setHoveredDomain(range)}
-      onMouseLeave={() => setHoveredDomain(null)}
-      onMouseMove={handleMouseMove}
-    >
+    <div className="relative inline-block group">
       <div
         className={`flex items-center gap-3 transition-all duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
         style={{ width: `${blockWidth}px` }}
       >
         {/* Main visualization bar */}
         <div className="relative flex-1 h-10 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full overflow-hidden shadow-inner">
-          <div
-            className="absolute h-full bg-gradient-to-r from-[#0ab079] to-[#07eea5] rounded-full transition-all duration-300 shadow-md"
-            style={{
-              left: `${startPercent}%`,
-              width: `${widthPercent}%`
-            }}
-          />
+          {/* Render each range segment with individual hover */}
+          {parsedData.ranges.map((range, index) => {
+            const startPercent = Math.max(0, Math.min(100, (range.start / scaleEnd) * 100));
+            const endPercent = Math.max(0, Math.min(100, (range.end / scaleEnd) * 100));
+            const widthPercent = endPercent - startPercent;
+            const segmentLength = range.end - range.start + 1;
+
+            return (
+              <div
+                key={index}
+                className={`absolute h-full bg-gradient-to-r from-[#0ab079] to-[#07eea5] rounded-full transition-all duration-300 shadow-md cursor-pointer ${
+                  hoveredSegment?.index === index ? 'brightness-110 scale-y-110' : ''
+                }`}
+                style={{
+                  left: `${startPercent}%`,
+                  width: `${widthPercent}%`
+                }}
+                onMouseEnter={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const parentRect = e.currentTarget.closest('.relative.inline-block').getBoundingClientRect();
+                  setTooltipPosition({
+                    x: rect.left - parentRect.left + rect.width / 2,
+                    y: rect.top - parentRect.top
+                  });
+                  setHoveredSegment({
+                    index,
+                    range,
+                    domain: parsedData.domain,
+                    segmentLength,
+                    segmentNumber: index + 1,
+                    totalSegments: parsedData.ranges.length
+                  });
+                }}
+                onMouseLeave={() => setHoveredSegment(null)}
+              />
+            );
+          })}
         </div>
 
         {/* Domain label */}
         <span className="text-xs text-[#08c88a] font-jetbrains whitespace-nowrap font-bold bg-green-50 px-2 py-1 rounded-md">
-          {range.domain}
+          {parsedData.domain}
         </span>
       </div>
 
-      {/* Hover tooltip */}
-      {hoveredDomain?.domain === range.domain && (
+      {/* Hover tooltip - shows specific segment info */}
+      {hoveredSegment && (
         <div
           className="absolute z-50 bg-white text-slate-900 text-xs px-4 py-3 pointer-events-none rounded-xl shadow-2xl border-2 border-green-200"
           style={{
             left: `${tooltipPosition.x}px`,
-            top: `${tooltipPosition.y - 80}px`,
+            top: `${tooltipPosition.y - 90}px`,
             transform: 'translateX(-50%)',
             minWidth: '180px'
           }}
         >
-          <div className="font-bold text-[#08c88a] text-sm mb-2">{range.domain}</div>
-          <div className="text-gray-700 mb-1"><span className="font-semibold">Range:</span> {rangeStart}-{rangeEnd}</div>
-          <div className="text-gray-700 mb-1"><span className="font-semibold">Domain Length:</span> {rangeEnd - rangeStart + 1} aa</div>
-          <div className="text-gray-900 font-semibold border-t pt-2 mt-2"><span className="text-gray-600 font-normal">Protein:</span> {proteinLength || 'N/A'} aa</div>
+          <div className="font-bold text-[#08c88a] text-sm mb-2">
+            {hoveredSegment.domain}
+            {hoveredSegment.totalSegments > 1 && (
+              <span className="text-gray-500 font-normal ml-1">
+                (Segment {hoveredSegment.segmentNumber}/{hoveredSegment.totalSegments})
+              </span>
+            )}
+          </div>
+          <div className="text-gray-700 mb-1">
+            <span className="font-semibold">Range:</span> {hoveredSegment.range.start}-{hoveredSegment.range.end}
+          </div>
+          <div className="text-gray-700 mb-1">
+            <span className="font-semibold">Segment Length:</span> {hoveredSegment.segmentLength} aa
+          </div>
+          <div className="text-gray-900 font-semibold border-t pt-2 mt-2">
+            <span className="text-gray-600 font-normal">Protein:</span> {proteinLength || 'N/A'} aa
+          </div>
         </div>
       )}
     </div>
@@ -635,7 +667,7 @@ export default function Dashboard({ onLogout }) {
                 <div className="text-center py-20">
                   <div className="flex flex-col items-center justify-center">
                     <div className="bg-gradient-to-br from-indigo-100 to-purple-100 p-6 rounded-full mb-6">
-                      <Search className="w-16 h-16 text-[#08c88a]" />
+                      <img src="/discovery.png" alt="Discovery" className="w-16 h-16 object-contain" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 mb-2">No data to display</h3>
                     <p className="text-gray-600 mb-2 text-base">Use the search filters above to find proteins</p>

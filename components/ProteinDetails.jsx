@@ -1,14 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { proteinService } from '../lib/proteinService';
 import Sidebar from './Sidebar';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 
 const DomainScale = ({ protein }) => {
-  const [hoveredDomain, setHoveredDomain] = useState(null);
+  const [hoveredSegment, setHoveredSegment] = useState(null); // { index, range, domain }
+  const [showModal, setShowModal] = useState(null); // stores the segment index to show modal for
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [isMounted, setIsMounted] = useState(false);
+
+  // For portal - ensure we're on client side
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const sequenceLength = protein?.length || 1000;
   const scaleHeight = 120;
@@ -23,33 +31,53 @@ const DomainScale = ({ protein }) => {
     });
   };
 
+  // Parse range data - handles single and multiple ranges
+  // Examples: "PF03245(27...149)" or "PF00704(34...320,355...427)"
   const parseRange = (data) => {
     if (!data || typeof data !== 'string') return null;
 
-    const matches = data.match(/([A-Z0-9]+)\((\d+)[\.\-]+(\d+)\)/);
-    if (matches && matches.length >= 4) {
-      return {
-        domain: matches[1],
-        start: parseInt(matches[2]),
-        end: parseInt(matches[3])
-      };
+    // Match the domain code and everything inside parentheses
+    const domainMatch = data.match(/([A-Z0-9]+)\(([^)]+)\)/);
+    if (!domainMatch || domainMatch.length < 3) return null;
+
+    const domain = domainMatch[1];
+    const rangesStr = domainMatch[2];
+
+    // Parse all ranges (comma-separated)
+    const rangeMatches = rangesStr.matchAll(/(\d+)[\.\-]+(\d+)/g);
+    const ranges = [];
+
+    for (const match of rangeMatches) {
+      ranges.push({
+        start: parseInt(match[1]),
+        end: parseInt(match[2])
+      });
     }
-    return null;
+
+    if (ranges.length === 0) return null;
+
+    return {
+      domain,
+      ranges
+    };
   };
 
-  const range = parseRange(protein?.entries_header);
+  const parsedData = parseRange(protein?.entries_header);
 
-  // Calculate view window - focus on domain if it's relatively small
+  // Calculate view window - focus on domains if they're relatively small
   const calculateViewWindow = () => {
-    if (!range) return { start: 0, end: sequenceLength };
+    if (!parsedData || parsedData.ranges.length === 0) return { start: 0, end: sequenceLength };
 
-    const domainLength = range.end - range.start;
-    const domainRatio = domainLength / sequenceLength;
+    // Find the overall range span (min start to max end)
+    const minStart = Math.min(...parsedData.ranges.map(r => r.start));
+    const maxEnd = Math.max(...parsedData.ranges.map(r => r.end));
+    const totalDomainSpan = maxEnd - minStart;
+    const domainRatio = totalDomainSpan / sequenceLength;
 
-    // If domain is less than 5% of the sequence, zoom in
+    // If domain span is less than 5% of the sequence, zoom in
     if (domainRatio < 0.05) {
-      const domainCenter = (range.start + range.end) / 2;
-      const windowSize = Math.max(domainLength * 10, 500); // Show at least 10x domain size or 500aa
+      const domainCenter = (minStart + maxEnd) / 2;
+      const windowSize = Math.max(totalDomainSpan * 10, 500); // Show at least 10x domain size or 500aa
 
       let windowStart = Math.max(0, Math.floor(domainCenter - windowSize / 2));
       let windowEnd = Math.min(sequenceLength, Math.ceil(domainCenter + windowSize / 2));
@@ -129,14 +157,15 @@ const DomainScale = ({ protein }) => {
   };
 
   const { majorTicks, minorTicks } = generateTicks();
-  
-  // Function to render sequence with highlighting
-  const renderSequenceWithHighlight = () => {
-    if (!protein?.sequence || !range) return null;
+
+  // Function to render sequence with highlighting for a specific segment
+  const renderSequenceWithHighlight = (segmentIndex) => {
+    if (!protein?.sequence || !parsedData) return null;
 
     const sequence = protein.sequence;
+    const range = parsedData.ranges[segmentIndex];
+
     // Positions are 1-indexed, but substring is 0-indexed
-    // So position 5 means the 5th character, which is index 4
     const beforeDomain = sequence.substring(0, range.start - 1);
     const domainSequence = sequence.substring(range.start - 1, range.end);
     const afterDomain = sequence.substring(range.end);
@@ -152,10 +181,26 @@ const DomainScale = ({ protein }) => {
 
   const isZoomed = viewWindow.start > 0 || viewWindow.end < sequenceLength;
 
+  if (!parsedData) {
+    return (
+      <div className="w-full">
+        <h3 className="text-lg font-bold text-linear-text-primary mb-4">Domain Position</h3>
+        <p className="text-sm text-linear-text-secondary">{protein?.entries_header || 'N/A'}</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-linear-text-primary">Domain Position</h3>
+    <div className="w-full space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold text-linear-text-primary">
+          Domain Position
+          {parsedData.ranges.length > 1 && (
+            <span className="ml-2 text-sm font-normal text-gray-500">
+              ({parsedData.ranges.length} segments)
+            </span>
+          )}
+        </h3>
         {isZoomed && (
           <div className="text-xs text-linear-text-secondary font-mono bg-green-50 px-3 py-1 rounded-full">
             Zoomed View: {viewWindow.start}-{viewWindow.end} of {sequenceLength} aa
@@ -163,153 +208,239 @@ const DomainScale = ({ protein }) => {
         )}
       </div>
 
-      <div className="relative p-8 glass-effect rounded-3xl">
-        <svg
-          viewBox={`0 0 ${svgWidth + padding * 2} ${scaleHeight}`}
-          className="w-full h-auto"
-          preserveAspectRatio="xMidYMid meet"
-          onMouseMove={handleMouseMove}
-        >
-          <defs>
-            <linearGradient id="proteinGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#0ab079" stopOpacity="0.3" />
-              <stop offset="50%" stopColor="#08c88a" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="#07eea5" stopOpacity="0.3" />
-            </linearGradient>
-          </defs>
+      {/* Render a scale for each segment */}
+      {parsedData.ranges.map((range, index) => {
+        const segmentLength = range.end - range.start + 1;
 
-          <rect
-            x={padding}
-            y="30"
-            width={svgWidth}
-            height="20"
-            fill="#d1fae5"
-            stroke="#a7f3d0"
-            strokeWidth="2"
-            rx="10"
-          />
+        return (
+          <div key={index} className="relative">
+            {/* Segment label */}
+            {parsedData.ranges.length > 1 && (
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-sm font-semibold text-[#08c88a]">
+                  Segment {index + 1}
+                </span>
+                <span className="text-xs text-gray-500">
+                  ({range.start}-{range.end}, {segmentLength} aa)
+                </span>
+              </div>
+            )}
 
-          {range && range.end >= viewWindow.start && range.start <= viewWindow.end && (
-            <g
-              onMouseEnter={() => setHoveredDomain(range)}
-              onMouseLeave={() => setHoveredDomain(null)}
-              className="cursor-pointer"
-            >
-              <rect
-                x={calculatePosition(Math.max(range.start, viewWindow.start))}
-                y="25"
-                width={((Math.min(range.end, viewWindow.end) - Math.max(range.start, viewWindow.start)) / viewLength) * svgWidth}
-                height="30"
-                fill="#08c88a"
-                fillOpacity={hoveredDomain?.domain === range.domain ? 1 : 0.8}
-                stroke="#0ab079"
-                strokeWidth="2"
-                rx="5"
-                className="transition-all duration-200"
-              />
-
-              <text
-                x={calculatePosition((Math.max(range.start, viewWindow.start) + Math.min(range.end, viewWindow.end)) / 2)}
-                y="42"
-                textAnchor="middle"
-                className="fill-white text-sm font-semibold"
+            <div className="relative p-8 glass-effect rounded-3xl">
+              <svg
+                viewBox={`0 0 ${svgWidth + padding * 2} ${scaleHeight}`}
+                className="w-full h-auto"
+                preserveAspectRatio="xMidYMid meet"
+                onMouseMove={handleMouseMove}
               >
-                {range.domain}
-              </text>
-            </g>
-          )}
-          
-          {/* Major ticks with labels */}
-          {majorTicks.map((tick) => (
-            <g key={`major-${tick}`}>
-              <line
-                x1={calculatePosition(tick)}
-                y1="55"
-                x2={calculatePosition(tick)}
-                y2="68"
-                stroke="#6b7280"
-                strokeWidth="2"
-              />
-              <text
-                x={calculatePosition(tick)}
-                y="90"
-                textAnchor="middle"
-                className="fill-linear-text-secondary text-xs font-jetbrains"
-              >
-                {tick}
-              </text>
-            </g>
-          ))}
-          
-          {/* Minor ticks without labels */}
-          {minorTicks.map((tick) => (
-            <g key={`minor-${tick}`}>
-              <line
-                x1={calculatePosition(tick)}
-                y1="55"
-                x2={calculatePosition(tick)}
-                y2="62"
-                stroke="#9ca3af"
-                strokeWidth="1"
-              />
-            </g>
-          ))}
-          
-          <text
-            x={svgWidth / 2 + padding}
-            y="110"
-            textAnchor="middle"
-            className="fill-linear-text-secondary text-sm font-ui"
-          >
-            Sequence Position
-          </text>
-        </svg>
+                <defs>
+                  <linearGradient id={`proteinGradient-${index}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#0ab079" stopOpacity="0.3" />
+                    <stop offset="50%" stopColor="#08c88a" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#07eea5" stopOpacity="0.3" />
+                  </linearGradient>
+                </defs>
 
-        {/* HTML Tooltip with full sequence */}
-        {hoveredDomain && hoveredDomain.domain === range.domain && (
-          <div
-            className="absolute z-50 bg-gray-900 text-white rounded-lg shadow-2xl pointer-events-none"
-            style={{
-              left: `${tooltipPosition.x}px`,
-              top: `${tooltipPosition.y - 20}px`,
-              transform: 'translate(-50%, -100%)',
-              width: '600px',
-            }}
-          >
-            <div className="p-4">
-              <div className="font-semibold text-sm mb-2 text-[#08c88a]">
-                {range.domain}: Position {range.start}-{range.end}
-              </div>
-              <div className="text-xs text-gray-400 mb-2">
-                Domain Length: {range.end - range.start} aa | Protein Length: {sequenceLength} aa
-              </div>
-              <div className="max-h-60 overflow-y-auto bg-gray-800 p-3 rounded border border-gray-700">
-                {renderSequenceWithHighlight()}
-              </div>
-            </div>
-            <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full">
-              <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-gray-900"></div>
+                {/* Background bar representing full protein */}
+                <rect
+                  x={padding}
+                  y="30"
+                  width={svgWidth}
+                  height="20"
+                  fill="#d1fae5"
+                  stroke="#a7f3d0"
+                  strokeWidth="2"
+                  rx="10"
+                />
+
+                {/* Domain segment */}
+                {range.end >= viewWindow.start && range.start <= viewWindow.end && (
+                  <g
+                    onMouseEnter={() => setHoveredSegment({ index, range, domain: parsedData.domain })}
+                    onMouseLeave={() => setHoveredSegment(null)}
+                    onClick={() => setShowModal(index)}
+                    className="cursor-pointer"
+                  >
+                    <rect
+                      x={calculatePosition(Math.max(range.start, viewWindow.start))}
+                      y="25"
+                      width={((Math.min(range.end, viewWindow.end) - Math.max(range.start, viewWindow.start)) / viewLength) * svgWidth}
+                      height="30"
+                      fill="#08c88a"
+                      fillOpacity={hoveredSegment?.index === index ? 1 : 0.8}
+                      stroke="#0ab079"
+                      strokeWidth="2"
+                      rx="5"
+                      className="transition-all duration-200"
+                    />
+
+                    <text
+                      x={calculatePosition((Math.max(range.start, viewWindow.start) + Math.min(range.end, viewWindow.end)) / 2)}
+                      y="42"
+                      textAnchor="middle"
+                      className="fill-white text-sm font-semibold pointer-events-none"
+                    >
+                      {parsedData.domain}
+                    </text>
+                  </g>
+                )}
+
+                {/* Major ticks with labels */}
+                {majorTicks.map((tick) => (
+                  <g key={`major-${tick}`}>
+                    <line
+                      x1={calculatePosition(tick)}
+                      y1="55"
+                      x2={calculatePosition(tick)}
+                      y2="68"
+                      stroke="#6b7280"
+                      strokeWidth="2"
+                    />
+                    <text
+                      x={calculatePosition(tick)}
+                      y="90"
+                      textAnchor="middle"
+                      className="fill-linear-text-secondary text-xs font-jetbrains"
+                    >
+                      {tick}
+                    </text>
+                  </g>
+                ))}
+
+                {/* Minor ticks without labels */}
+                {minorTicks.map((tick) => (
+                  <g key={`minor-${tick}`}>
+                    <line
+                      x1={calculatePosition(tick)}
+                      y1="55"
+                      x2={calculatePosition(tick)}
+                      y2="62"
+                      stroke="#9ca3af"
+                      strokeWidth="1"
+                    />
+                  </g>
+                ))}
+
+                <text
+                  x={svgWidth / 2 + padding}
+                  y="110"
+                  textAnchor="middle"
+                  className="fill-linear-text-secondary text-sm font-ui"
+                >
+                  Sequence Position
+                </text>
+              </svg>
+
+              {/* Hover hint tooltip */}
+              {hoveredSegment?.index === index && showModal === null && (
+                <div
+                  className="absolute z-40 bg-gray-900 text-white rounded-lg shadow-lg pointer-events-none px-3 py-2"
+                  style={{
+                    left: `${tooltipPosition.x}px`,
+                    top: `${tooltipPosition.y - 10}px`,
+                    transform: 'translate(-50%, -100%)',
+                  }}
+                >
+                  <div className="text-xs text-center">
+                    <span className="text-[#08c88a] font-semibold">
+                      {parsedData.domain}
+                      {parsedData.ranges.length > 1 && ` (Segment ${index + 1})`}
+                    </span>
+                    <span className="text-gray-400 ml-2">Click to view details</span>
+                  </div>
+                  <div className="text-xs text-gray-300 mt-1">
+                    Range: {range.start}-{range.end} ({segmentLength} aa)
+                  </div>
+                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full">
+                    <div className="w-0 h-0 border-l-6 border-r-6 border-t-6 border-transparent border-t-gray-900"></div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        )}
-      </div>
+        );
+      })}
 
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(5px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .animate-fade-in {
-          animation: fade-in 0.2s ease-out;
-        }
-      `}</style>
+      {/* Domain Details Modal - rendered via Portal to document.body */}
+      {isMounted && showModal !== null && parsedData && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          onClick={() => setShowModal(null)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+          {/* Modal Content */}
+          <div
+            className="relative bg-black text-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden border border-gray-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-800">
+              <div>
+                <h3 className="text-xl font-bold text-[#08c88a]">
+                  {parsedData.domain}
+                  {parsedData.ranges.length > 1 && (
+                    <span className="text-gray-400 font-normal ml-2">
+                      (Segment {showModal + 1}/{parsedData.ranges.length})
+                    </span>
+                  )}
+                </h3>
+                <p className="text-sm text-gray-400 mt-1">
+                  Position {parsedData.ranges[showModal].start} - {parsedData.ranges[showModal].end}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowModal(null)}
+                className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-4 p-6 border-b border-gray-800">
+              <div className="bg-gray-800/50 rounded-xl p-4">
+                <div className="text-2xl font-bold text-[#08c88a]">
+                  {parsedData.ranges[showModal].end - parsedData.ranges[showModal].start + 1}
+                </div>
+                <div className="text-xs text-gray-400 uppercase tracking-wider mt-1">
+                  Segment Length (aa)
+                </div>
+              </div>
+              <div className="bg-gray-800/50 rounded-xl p-4">
+                <div className="text-2xl font-bold text-white">
+                  {sequenceLength}
+                </div>
+                <div className="text-xs text-gray-400 uppercase tracking-wider mt-1">
+                  Protein Length (aa)
+                </div>
+              </div>
+            </div>
+
+            {/* Sequence */}
+            <div className="p-6">
+              <div className="max-h-60 overflow-y-auto bg-gray-800 p-4 rounded-xl border border-gray-700">
+                {renderSequenceWithHighlight(showModal)}
+              </div>
+              <p className="text-xs text-gray-500 mt-3">
+                The highlighted region shows the domain sequence ({parsedData.ranges[showModal].start}-{parsedData.ranges[showModal].end})
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end p-6 border-t border-gray-800">
+              <button
+                onClick={() => setShowModal(null)}
+                className="px-6 py-3 bg-gradient-to-r from-[#0ab079] to-[#07eea5] text-black font-semibold rounded-xl hover:shadow-[0_0_20px_rgba(8,200,138,0.3)] transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

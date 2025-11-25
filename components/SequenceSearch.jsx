@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { sequenceSearchService } from '../lib/simplifiedSequenceSearch';
 import {
@@ -11,6 +11,13 @@ import {
   Dna
 } from 'lucide-react';
 
+// Session storage keys for caching search state
+const STORAGE_KEYS = {
+  SEQUENCE: 'sequenceSearch_sequence',
+  RESULTS: 'sequenceSearch_results',
+  PAGE: 'sequenceSearch_page',
+  IS_MULTI: 'sequenceSearch_isMulti'
+};
 
 export default function SequenceSearch() {
   const router = useRouter();
@@ -20,6 +27,49 @@ export default function SequenceSearch() {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isMultiSearch, setIsMultiSearch] = useState(false);
+
+  // Restore cached state on component mount
+  useEffect(() => {
+    try {
+      const cachedSequence = sessionStorage.getItem(STORAGE_KEYS.SEQUENCE);
+      const cachedResults = sessionStorage.getItem(STORAGE_KEYS.RESULTS);
+      const cachedPage = sessionStorage.getItem(STORAGE_KEYS.PAGE);
+      const cachedIsMulti = sessionStorage.getItem(STORAGE_KEYS.IS_MULTI);
+
+      if (cachedSequence) {
+        setSearchSequence(cachedSequence);
+      }
+      if (cachedResults) {
+        setResults(JSON.parse(cachedResults));
+      }
+      if (cachedPage) {
+        setCurrentPage(parseInt(cachedPage, 10));
+      }
+      if (cachedIsMulti) {
+        setIsMultiSearch(cachedIsMulti === 'true');
+      }
+    } catch (err) {
+      console.error('Error restoring cached search state:', err);
+    }
+  }, []);
+
+  // Save state to sessionStorage whenever it changes
+  const saveStateToCache = useCallback((sequence, resultsData, page, isMulti) => {
+    try {
+      if (sequence) {
+        sessionStorage.setItem(STORAGE_KEYS.SEQUENCE, sequence);
+      }
+      if (resultsData) {
+        sessionStorage.setItem(STORAGE_KEYS.RESULTS, JSON.stringify(resultsData));
+      }
+      if (page) {
+        sessionStorage.setItem(STORAGE_KEYS.PAGE, page.toString());
+      }
+      sessionStorage.setItem(STORAGE_KEYS.IS_MULTI, isMulti.toString());
+    } catch (err) {
+      console.error('Error saving search state to cache:', err);
+    }
+  }, []);
 
   const validateSequence = (seq) => {
     const cleaned = seq.toUpperCase().replace(/[^ACDEFGHIKLMNPQRSTVWY\s,]/g, '');
@@ -74,6 +124,8 @@ export default function SequenceSearch() {
         } else {
           setResults(result);
           setCurrentPage(page);
+          // Cache the results
+          saveStateToCache(input, result, page, true);
 
           if (result.totalCount === 0) {
             setError(`No proteins found for any of the ${sequences.length} sequences`);
@@ -120,7 +172,7 @@ export default function SequenceSearch() {
           setResults(null);
         } else {
           // Wrap single result in array format to match multi-search structure
-          setResults({
+          const wrappedResult = {
             results: [{
               sequence: cleanedSequence,
               ...result
@@ -129,8 +181,11 @@ export default function SequenceSearch() {
             searchedSequences: [cleanedSequence],
             isTruncated: result.isTruncated,
             useWindowSearch: result.useWindowSearch
-          });
+          };
+          setResults(wrappedResult);
           setCurrentPage(result.currentPage);
+          // Cache the results
+          saveStateToCache(input, wrappedResult, result.currentPage, false);
 
           if (result.count === 0) {
             setError(`No proteins found containing: ${cleanedSequence}`);
@@ -145,7 +200,7 @@ export default function SequenceSearch() {
         setLoading(false);
       }
     }
-  }, [searchSequence]);
+  }, [searchSequence, saveStateToCache]);
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= results?.totalPages) {
@@ -170,7 +225,17 @@ export default function SequenceSearch() {
     setResults(null);
     setError(null);
     setCurrentPage(1);
+    setIsMultiSearch(false);
     sequenceSearchService.clearCache();
+    // Clear sessionStorage cache
+    try {
+      sessionStorage.removeItem(STORAGE_KEYS.SEQUENCE);
+      sessionStorage.removeItem(STORAGE_KEYS.RESULTS);
+      sessionStorage.removeItem(STORAGE_KEYS.PAGE);
+      sessionStorage.removeItem(STORAGE_KEYS.IS_MULTI);
+    } catch (err) {
+      console.error('Error clearing search cache:', err);
+    }
   };
 
   const handleRowClick = (proteinId) => {
@@ -184,7 +249,7 @@ export default function SequenceSearch() {
       {/* Search Form */}
       <div className="card-linear p-8">
         <h2 className="text-xl font-bold text-linear-text-primary mb-6 flex items-center gap-3">
-          <Dna className="w-5 h-5 text-green-600" />
+          <img src="/protein.png" alt="Protein" className="w-10 h-10 object-contain" />
           Search by Protein Sequence
         </h2>
         
@@ -206,7 +271,7 @@ export default function SequenceSearch() {
             <p className="text-xs text-blue-600 mt-2 flex items-start gap-2">
               <span>💡</span>
               <span>
-                <strong>Single search:</strong> Searches for proteins containing the sequence anywhere using <span className="font-mono font-semibold">(%xyz%)</span>.
+                <strong>Single search:</strong> Searches for proteins containing the sequence anywhere.
                 <br/>
                 <strong>Multiple search:</strong> Enter comma-separated sequences (e.g., "ABC,XYZ,DEF") to search for all sequences in parallel and view grouped results.
               </span>
